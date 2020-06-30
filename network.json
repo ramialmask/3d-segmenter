@@ -24,7 +24,7 @@
     },
     "dataloader":{
         "num_channels":"1",
-        "batch_size":"16",
+        "batch_size":"4",
         "shuffle":"True",
         "num_workers":"0",
         "block_size":"100",

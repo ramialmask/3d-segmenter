@@ -11,12 +11,14 @@ from PIL import Image
 
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from dataset.NeuronDataset import NeuronDataset
-from statistics import calc_statistics, calc_metrices
+from statistics import calc_statistics, calc_metrices, calc_metrices_stats
 from loaders import *
 from util import *
 
 #TODO
 # Learning rate sheduler
+# Comments
+# WBCELoss, DiceLoss, CenterlineDiceLoss
 
 def crossvalidation(settings):
     input_list = os.listdir(settings["paths"]["input_raw_path"])
@@ -111,12 +113,12 @@ def validate_epoch(net, criterion, dataloader):
         loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
-        res             = probs.detach().cpu().numpy()
+        res             = logits.detach().cpu().numpy()
         res[res > 0.5] = 1.0 
         res[res <= 0.5] = 0.0
         res = np.ravel(res)
 
-        target          = item["class"].numpy()
+        target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
@@ -214,18 +216,18 @@ def test(net, criterion, dataloader, df):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        image       = image.cuda()
-        image_class = image_class.cuda()
+        volume       = volume.cuda()
+        segmentation = segmentation.cuda()
 
-        probs       = net(image)
-        loss        = criterion(probs, image_class)
+        logits       = net(volume)
+        loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
-        res             = probs.detach().cpu().numpy()
+        res             = logits.detach().cpu().numpy()
         res[res > 0.5] = 1.0 
         res[res <= 0.5] = 0.0
 
-        target          = item["class"].numpy()
+        target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         df_item = pd.DataFrame({"dummy":0})
@@ -264,5 +266,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     writer.add_scalar(f"Validation Metrics/Dice", metrics[-1], epoch)
     return df
 
-settings = read_meta_dict("/home/ramial-maskari/Documents/3d-segmenter/","train")
+torch.cuda.init()
+torch.cuda.set_device(1)
+settings = read_meta_dict("/home/ramial-maskari/Documents/syndatron/3d-segmenter/","train")
 crossvalidation(settings)

@@ -31,6 +31,7 @@ class Deep_Vessel_Net_FC(nn.Module):
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
         x = self.conv5(x)
+        x = torch.sigmoid(x)
         return x
 
     def save_model(self, path):

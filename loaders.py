@@ -1,5 +1,6 @@
 import os
 import json
+from dataset.training_dataset import TrainingDataset
 from dataset.NeuronDataset import NeuronDataset
 from torch.utils.data import DataLoader
 
@@ -74,6 +75,7 @@ def get_loader(settings, input_list, testing=False):
         batch_size = 1
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = NeuronDataset(settings, input_list)
+    # dataset     = NeuronDataset(settings, input_list)
+    dataset     = TrainingDataset(settings, input_list)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader

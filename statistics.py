@@ -54,7 +54,7 @@ def calc_metrices(pred, target):
         f1_dice = (2*tp) / (2*tp + fp +fn)
     return precision, recall, vs, accuracy, f1_dice
 
-def calc_metrics_stats(m_list):
+def calc_metrices_stats(m_list):
     tp, tn, fp, fn = m_list[0], m_list[1], m_list[2], m_list[3]
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn)
