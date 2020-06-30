@@ -1,0 +1,10 @@
+{
+    "input_raw_path":       "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input_small/raw/",
+    "input_gt_path":    "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input_small/gt/",
+    "input_model_path": "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input_small/models/",
+    "output_model_path":"/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/output/models/",
+    "writer_path":      "/home/ramial-maskari/runs/",
+    "input_model":"",
+    "output_folder_prefix":"DeepVesselTest",
+    "model_name":""
+}

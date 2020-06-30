@@ -1,0 +1,7 @@
+{
+    "sigmoid":"True",
+    "binarize":"True",
+    "threshold":"0.5",
+    "calc_metrics":"True",
+    "calc_statistics":"True"
+}

@@ -1,0 +1,26 @@
+{
+    "retraining":"False",
+    "epochs":"100",
+    "early_stopping":"False",
+    "delete_qs":"True",
+    "loss":{
+        "class":"BCELoss",
+        "reduction":"sum"
+    },
+    "crossvalidation":{
+        "test_split_rate":"0.2",
+        "train_val_split_rate":"0.2"
+    },
+    "optimizer":{
+        "class":"Adam",
+        "learning_rate":"1e-4",
+        "decay":"Default",
+        "momentum":"Default"
+    },
+    "scheduler":{
+        "patience":"15",
+        "factor":"0.1",
+        "min_factor":"1e-7",
+        "threshold":""
+    }
+}
