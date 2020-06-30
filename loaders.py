@@ -41,6 +41,9 @@ def read_meta_dict(path, mode):
     return settings
 
 def write_meta_dict(path, settings, mode="train"):
+    """Write down the meta dict / settings dict
+    Contains deprecated code segments
+    """
     path_dir = os.path.join(path, "paths.json")
     with open(path_dir, "w") as file:
         json.dump(settings["paths"], file)
@@ -71,6 +74,12 @@ def write_meta_dict(path, settings, mode="train"):
             json.dump(_temp, file)
 
 def get_loader(settings, input_list, testing=False):
+    """Retrieve a dataloader for a given input list
+    Args:
+        settings (dict) : The meta dictionary
+        input_list(list): List of items for the dataset
+        testing (bool)  : True if testing, False else
+    """
     if testing:
         batch_size = 1
     else:

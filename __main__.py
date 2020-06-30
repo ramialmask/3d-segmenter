@@ -11,16 +11,25 @@ from PIL import Image
 
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from dataset.NeuronDataset import NeuronDataset
-from statistics import calc_statistics, calc_metrices, calc_metrices_stats
+from statistics import calc_statistics, calc_metrices_stats
+from loss.dice_loss import DiceLoss
 from loaders import *
 from util import *
 
 #TODO
 # Learning rate sheduler
-# Comments
-# WBCELoss, DiceLoss, CenterlineDiceLoss
+# CenterlineDiceLoss
+# Remove deprecated parts
 
 def crossvalidation(settings):
+    """Splits the input list into a 1/test_split_rate splits containing test and train data
+    Trains and validates 1/train_val_split_rate splits for each test split
+    Uses the model with the lowest validation loss to test on the given split
+    Saves all models and their respective dicts to the output path
+    Saves training and testing dataframes to the output path
+    Args:
+        settings (dict): A settings dictionary
+    """
     input_list = os.listdir(settings["paths"]["input_raw_path"])
 
     test_split_rate = float(settings["training"]["crossvalidation"]["test_split_rate"])
@@ -47,9 +56,11 @@ def crossvalidation(settings):
     test_df.to_csv(f"{model_save_dir}/test.csv")
 
 def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
+    """Trains a single model for a given test and train_val fold
+    """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
     net             = Deep_Vessel_Net_FC()
-    criterion       = torch.nn.BCELoss()
+    criterion       = DiceLoss()#torch.nn.BCELoss()
     optimizer       = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
 
@@ -80,6 +91,8 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     return df
 
 def train_epoch(net, optimizer, criterion, dataloader):
+    """Trains a model for a single epoch
+    """
     net.train()
     running_loss = 0.0
     d_len = len(dataloader)
@@ -99,6 +112,8 @@ def train_epoch(net, optimizer, criterion, dataloader):
     return net, optimizer, criterion, (running_loss / d_len)
 
 def validate_epoch(net, criterion, dataloader):
+    """Evaluates a single epoch
+    """
     net.eval()
     running_loss = 0.0
     d_len = len(dataloader)
@@ -209,6 +224,8 @@ def test_crossvalidation(settings, df, model_name):
     return test_df, test_patch_df
 
 def test(net, criterion, dataloader, df):
+    """Tests a given network on provided test data
+    """
     net.eval()
     running_loss = 0.0
     d_len = len(dataloader)
@@ -266,7 +283,12 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     writer.add_scalar(f"Validation Metrics/Dice", metrics[-1], epoch)
     return df
 
+# Initialize cuda
 torch.cuda.init()
 torch.cuda.set_device(1)
+
+# Read the meta dictionary
 settings = read_meta_dict("/home/ramial-maskari/Documents/syndatron/3d-segmenter/","train")
+
+# Run the program
 crossvalidation(settings)

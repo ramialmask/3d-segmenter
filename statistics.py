@@ -23,11 +23,11 @@ def calc_statistics(pred, target):
     fn = la(no(pred), target).sum()
     return tp, tn, fp, fn
 
-def calc_metrices(pred, target):
-    """Calculate test statistics
+def calc_metrices_stats(m_list):
+    """Calculate test statistics on a given list of binary metrices
     Args:
-        - pred      (torch.tensor)  : The predicted values in binary (0,1) format
-        - target    (torch.tensor)  : The target value in a binary(0,1) format
+        - m_lis     (list of ints)  : A list containing true positives, true negatives, 
+                                        false positives, false negatives in this order
     Returns:
         - precision (double)        : Precision
         - recall    (double)        : Recall
@@ -35,26 +35,6 @@ def calc_metrices(pred, target):
         - accuracy  (double)        : Accuracy score
         - f1_dice   (double)        : Dice/F1-Score
     """
-    pred = np.hstack(pred)
-    target = np.hstack(target)
-    pred = pred.astype(bool)
-    target = target.astype(bool)
-    if pred.sum() == 0 and target.sum() == 0:
-        precision = 1
-        recall = 1
-        vs = 1
-        accuracy = 1
-        f1_dice = 1
-    else:
-        tp, tn, fp, fn = calc_statistics(pred, target)
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / (tp + fn)
-        vs = 1 - abs(fn - fp) / (2*tp + fp + fn)
-        accuracy = (tp + tn) / (tp + fp + tn + fn)
-        f1_dice = (2*tp) / (2*tp + fp +fn)
-    return precision, recall, vs, accuracy, f1_dice
-
-def calc_metrices_stats(m_list):
     tp, tn, fp, fn = m_list[0], m_list[1], m_list[2], m_list[3]
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
     recall = tp / (tp + fn)
