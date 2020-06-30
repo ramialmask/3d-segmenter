@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import pandas as pd
 
+import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
@@ -13,11 +14,11 @@ from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from dataset.NeuronDataset import NeuronDataset
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
+from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
 
 #TODO
-# Learning rate sheduler
 # CenterlineDiceLoss
 # Remove deprecated parts
 
@@ -60,8 +61,18 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
     net             = Deep_Vessel_Net_FC()
-    criterion       = DiceLoss()#torch.nn.BCELoss()
-    optimizer       = torch.optim.Adam(net.parameters(), lr=learning_rate)
+    criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
+    optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
+    lr              = optimizer.state_dict()["param_groups"][0]["lr"]
+    factor          = float(settings["training"]["scheduler"]["factor"])
+    patience        = int(settings["training"]["scheduler"]["patience"])
+    min_factor      = float(settings["training"]["scheduler"]["min_factor"])
+    scheduler       = optim.lr_scheduler.ReduceLROnPlateau(optimizer,\
+                        "min",factor=factor, \
+                        patience=patience, \
+                        threshold_mode="abs", \
+                        min_lr=lr*min_factor, \
+                        verbose=True)
 
 
     settings["training"]["crossvalidation"]["training_set"] = train_val_list[0]
@@ -83,6 +94,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     for epoch in range(epochs):
         net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader)
         validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
+        scheduler.step(eval_loss)
 
         metrics = [accuracy, precision, recall, f1_dice]
         df = _write_progress(writer, test_fold, train_val_fold, epoch, epochs, running_loss, validation_loss, metrics, df)
@@ -194,7 +206,7 @@ def test_crossvalidation(settings, df, model_name):
                 min_val_loss = df_fold["Validation Loss"][0]
                 best_fold = df_fold
 
-        best_val_fold           = best_fold["Validation Fold"][0]
+        best_val_fold           = best_fold["Validation Fold"].iloc[0]
         best_model_path         = os.path.join(model_path, str(test_fold), str(val_fold))
         best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch}.dat"
         
@@ -259,7 +271,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     """
 
     # Print the test progress to std.out
-    print(f"{test_fold}\t\t{val_fold}\t\t{epoch}\t\t{train_loss}\t{eval_loss}\t{metrics[0]}\t{metrics[1]}\t{metrics[2]}\t{metrics[3]}")
+    print(f"{test_fold}\t\t{val_fold}\t\t{epoch}\t{train_loss:.4f}\t\t{eval_loss:.4f}\t\t{metrics[0]:.4f}\t\t{metrics[1]:.4f}\t\t{metrics[2]:.4f}\t{metrics[3]:.4f}")
     
     # Construct Dataframe for train.csv
     df_item = pd.DataFrame({"Test Fold":[test_fold],\

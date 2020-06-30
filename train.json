@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"10",
+    "epochs":"50",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
@@ -8,18 +8,18 @@
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_split_rate":"0.2",
-        "train_val_split_rate":"0.2"
+        "test_split_rate":"0.4",
+        "train_val_split_rate":"0.5"
     },
     "optimizer":{
         "class":"Adam",
-        "learning_rate":"1e-4",
+        "learning_rate":"5e-4",
         "decay":"Default",
         "momentum":"Default"
     },
     "scheduler":{
-        "patience":"15",
-        "factor":"0.1",
+        "patience":"10",
+        "factor":"0.5",
         "min_factor":"1e-7",
         "threshold":""
     }
