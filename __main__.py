@@ -94,7 +94,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     for epoch in range(epochs):
         net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader)
         validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
-        scheduler.step(eval_loss)
+        scheduler.step(validation_loss)
 
         metrics = [accuracy, precision, recall, f1_dice]
         df = _write_progress(writer, test_fold, train_val_fold, epoch, epochs, running_loss, validation_loss, metrics, df)
