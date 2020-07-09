@@ -139,3 +139,5 @@ meta_data.json
 # Json files
 .json
 
+# Custom files:
+run_validation.py

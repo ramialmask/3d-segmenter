@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"50",
+    "epochs":"1",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
@@ -8,7 +8,7 @@
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_split_rate":"0.4",
+        "test_split_rate":"0.5",
         "train_val_split_rate":"0.5"
     },
     "optimizer":{

@@ -79,6 +79,7 @@ class TrainingDataset(Dataset):
         gt_list = []
 
         mb_size = int(self.settings["dataloader"]["block_size"])
+        name_list = []
         
 
         # Load data
@@ -86,8 +87,12 @@ class TrainingDataset(Dataset):
             item_nii_path   = os.path.join(nii_path, item)
             item_gt_path    = os.path.join(gt_path, item)
 
-            image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1).astype(np.int64)
+            image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
             image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
+
+            self.original_shape = image.shape
+            self.original_type = image.dtype
+            image = image.astype(np.int64)
 
             if transform:
                 image       = transform(image)
@@ -103,6 +108,7 @@ class TrainingDataset(Dataset):
 
             if image.shape[0] > mb_size:
                 vdivs = find_divs(self.settings, image)
+                self.vdivs = vdivs
                 offset_value = int(self.settings["preprocessing"]["padding"])
                 offset_volume = (offset_value, offset_value, offset_value)
                 offset_segmentation = (0,0,0)
@@ -112,18 +118,22 @@ class TrainingDataset(Dataset):
 
                 nii_list = nii_list + image_list
                 gt_list = gt_list + image_gt_list
+                name_list = name_list + [item for i in range(len(image_list))]
             else:
                 nii_list.append(image.unsqueeze(1))
                 gt_list.append(image_gt.unsqueeze(1))
 
 
-        self.item_list = [nii_list, gt_list]
+        self.item_list = [nii_list, gt_list, name_list]
+
+    def original_information(self):
+        return self.original_shape, self.original_type, self.vdivs
 
     def __len__(self):
         return len(self.item_list[0])
 
     def __getitem__(self, idx):
-        return {"volume":self.item_list[0][idx], "segmentation":self.item_list[1][idx]}
+        return {"volume":self.item_list[0][idx], "segmentation":self.item_list[1][idx], "name":self.item_list[2][idx]}
 
 
 

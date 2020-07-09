@@ -1,7 +1,6 @@
 import os
 import json
 from dataset.training_dataset import TrainingDataset
-from dataset.NeuronDataset import NeuronDataset
 from torch.utils.data import DataLoader
 
 def read_meta_dict(path, mode):
@@ -80,11 +79,12 @@ def get_loader(settings, input_list, testing=False):
         input_list(list): List of items for the dataset
         testing (bool)  : True if testing, False else
     """
+    shuffle = True
     if testing:
         batch_size = 1
+        shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    # dataset     = NeuronDataset(settings, input_list)
     dataset     = TrainingDataset(settings, input_list)
-    loader      = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    return loader
+    loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return loader, dataset

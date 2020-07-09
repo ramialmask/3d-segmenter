@@ -5,6 +5,6 @@
     "output_model_path":"/home/ramial-maskari/Documents/syndatron/segmentation/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"DeepVessel DiceLoss 2020 06 30",
+    "output_folder_prefix":"Simple Test",
     "model_name":""
 }
