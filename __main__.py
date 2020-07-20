@@ -52,7 +52,7 @@ def crossvalidation(settings):
     model_save_dir = os.path.join(settings["paths"]["output_model_path"], model_name)
     df.to_csv(f"{model_save_dir}/training.csv")
 
-    test_df, test_patch_df = test_crossvalidation(settings, df, model_name, model_save_dir)
+    test_crossvalidation(settings, df, model_name, model_save_dir)
 
 def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
@@ -221,7 +221,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         test_list       = settings["training"]["crossvalidation"]["test_set"]
         test_loader, test_dataset     = get_loader(settings, test_list, True)
 
-        test_patch_df, test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
+        test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
         print(f"Test scores")
         print("Test Fold\tValidation Fold\tTest Loss\tAccuracy\tPrecision\tRecall\tDice")
         print(f"{test_fold}\t{best_val_fold}\t{test_loss}\t{accuracy}\t{precision}\t{recall}\t{f1_dice}")

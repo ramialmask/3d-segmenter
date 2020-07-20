@@ -23,7 +23,6 @@ def split_list(input_list, split_rate):
         A list containing n tuples of lists
     """
     split_size = int(np.ceil(len(input_list) * split_rate))
-    # split_amount = int(len(input_list) / split_size)
     split_amount = int(1/split_rate)
     shuffle(input_list)
     result_list = []
