@@ -19,7 +19,7 @@
         "transform":{
             "crop":"5,5"
         },
-        "padding":"6",
+        "padding":"2",
         "padding_type":"circular"
     },
     "dataloader":{

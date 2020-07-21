@@ -36,14 +36,14 @@ def uniques(volume):
     volume_uniques_count = torch.stack(vl)
     return volume_uniques.type(volume.type()), volume_uniques_count.type(volume.type())
 
-def bce(input_tensor, target_tensor, weights=None, class_frequency=False, reduction='sum'):
+def bce(input_tensor, target_tensor, weights=None, class_frequency=False, reduction='mean'):
     # Calculate Class Frequency
     if class_frequency:
         weights = calc_class_frequency(target_tensor)
 
     # If weights are given or class frequency is activated calculate with weights
     # Add 0.00001 to take into account that a normed matrix will contain 0 and 1
-    loss_add = 0.0001
+    loss_add = 0.00001
     if weights is not None:
         loss = (target_tensor * torch.log(input_tensor + loss_add)) * weights[0] + \
             ((1 - target_tensor) * torch.log(1 - input_tensor + loss_add)) * weights[1]
@@ -52,6 +52,10 @@ def bce(input_tensor, target_tensor, weights=None, class_frequency=False, reduct
                 + (1 - target_tensor) * torch.log(1 - input_tensor + loss_add)
 
     loss_r = getattr(torch, reduction)(loss) * -1
+    if torch.isnan(loss_r):
+        print(f"Target {torch.max(target_tensor)}")
+        print(f"Input {torch.max(input_tensor)}")
+        print(f"Loss {loss_r}")
     assert(not torch.isnan(loss_r))
     assert(not torch.isinf(loss_r))
     return loss_r

@@ -1,10 +1,10 @@
 {
     "retraining":"False",
-    "epochs":"1",
+    "epochs":"50",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
-        "class":"BCELoss",
+        "class":"WBCELoss",
         "reduction":"sum"
     },
     "crossvalidation":{

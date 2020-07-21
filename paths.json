@@ -1,10 +1,10 @@
 {
-    "input_raw_path":   "/home/ramial-maskari/Documents/syndatron/segmentation/input/20200630_fg-gen3d/raw/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/syndatron/segmentation/input/20200630_fg-gen3d/gt/",
-    "input_model_path": "/home/ramial-maskari/Documents/syndatron/segmentation/input/models/",
-    "output_model_path":"/home/ramial-maskari/Documents/syndatron/segmentation/output/models/",
+    "input_raw_path":   "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/raw/20200717_190525/",
+    "input_gt_path":    "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/gt/20200717_190525/",
+    "input_model_path": "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/models/",
+    "output_model_path":"/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"Simple Test",
+    "output_folder_prefix":"UNET 3 px mask",
     "model_name":""
 }

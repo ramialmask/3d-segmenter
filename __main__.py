@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
+from models.unet_3d_oliver import Unet3D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
@@ -58,7 +59,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
     """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    net             = Deep_Vessel_Net_FC()
+    net             = Unet3D()#Deep_Vessel_Net_FC()
     criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
     optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
     lr              = optimizer.state_dict()["param_groups"][0]["lr"]
@@ -316,10 +317,10 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
 
 # Initialize cuda
 torch.cuda.init()
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 
 # Read the meta dictionary
-settings = read_meta_dict("/home/ramial-maskari/Documents/syndatron/3d-segmenter/","train")
+settings = read_meta_dict("./","train")
 
 # Run the program
 crossvalidation(settings)
