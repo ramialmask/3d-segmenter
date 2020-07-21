@@ -102,11 +102,12 @@ class TrainingDataset(Dataset):
                 image       = norm(image)
                 # image_gt    = norm(image_gt)
             
-            # Torchify
-            image = torch.tensor(image).float()
-            image_gt = torch.tensor(image_gt).float()
 
             if image.shape[0] > mb_size:
+                # Torchify
+                image = torch.tensor(image).float()
+                image_gt = torch.tensor(image_gt).float()
+
                 vdivs = find_divs(self.settings, image)
                 self.vdivs = vdivs
                 offset_value = int(self.settings["preprocessing"]["padding"])
@@ -120,9 +121,17 @@ class TrainingDataset(Dataset):
                 gt_list = gt_list + image_gt_list
                 name_list = name_list + [item for i in range(len(image_list))]
             else:
-                nii_list.append(image.unsqueeze(1))
-                gt_list.append(image_gt.unsqueeze(1))
+                # Pad
+                padding_value = int(self.settings["preprocessing"]["padding"])
 
+                image = np.pad(image, padding_value, "reflect")
+
+                # Torchify
+                image = torch.tensor(image).float()
+                image_gt = torch.tensor(image_gt).float()
+                nii_list.append(image.unsqueeze(0))
+                gt_list.append(image_gt.unsqueeze(0))
+                name_list.append(item)
 
         self.item_list = [nii_list, gt_list, name_list]
 
