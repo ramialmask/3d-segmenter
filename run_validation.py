@@ -14,12 +14,17 @@ from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
+from models.unet_3d_oliver import Unet3D
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
+
+def _net():
+    net = Unet3D()
+    return net
 
 def run_validation(p_, model_name):
     """Splits the input list into a 1/test_split_rate splits containing test and train data
@@ -56,7 +61,7 @@ def train(settings, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
     """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    net             = Deep_Vessel_Net_FC()
+    net             = _net()
     criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
 
     p_ = "/home/ramial-maskari/Documents/syndatron/segmentation/output/models/"
@@ -123,11 +128,11 @@ def test_crossvalidation(settings, df, model_name, model_path):
     test_folds = range(0, int(1 / float(settings["training"]["crossvalidation"]["test_split_rate"])))
     val_folds  = range(0, int(1 / float(settings["training"]["crossvalidation"]["train_val_split_rate"])) - 1)
 
-    epoch = int(settings["training"]["epochs"])
+    epoch = int(settings["training"]["epochs"]) - 1
 
     model_path = settings["paths"]["output_model_path"] + model_name
 
-    min_val_loss = 90001
+    min_val_loss = 9000000000001
     best_fold = -1
 
     test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
@@ -138,22 +143,23 @@ def test_crossvalidation(settings, df, model_name, model_path):
         for val_fold in val_folds:
             
             df_fold = df.loc[(df["Test Fold"] == test_fold) & (df["Validation Fold"] == val_fold) & (df["Epoch"] == epoch)]
-            print(f"DF FOLD{test_fold} {val_fold} {epoch}\n{df_fold}")
+            print(f"DF FOLD {test_fold} {val_fold} {epoch}\n{df_fold}")
             if df_fold["Validation Loss"].iloc[0] < min_val_loss:
                 min_val_loss = df_fold["Validation Loss"].iloc[0]
                 best_fold = df_fold
+        print(f"Iteration \n{best_fold}\n")
 
-        best_val_fold           = best_fold["Validation Fold"].iloc[0]
+        best_val_fold           = best_fold["Validation Fold"]#.iloc[0]
         best_model_path         = os.path.join(model_path, str(test_fold), str(val_fold))
-        best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch-1}.dat"
+        best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch}.dat"
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
 
-        settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/raw/"
-        settings["paths"]["input_gt_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/gt/"
+        # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/raw/"
+        # settings["paths"]["input_gt_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/gt/"
 
-        best_model      = Deep_Vessel_Net_FC()
+        best_model      = _net()
         best_model.load_model(best_model_data_path)
         best_model      = best_model.cuda()
         criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)
@@ -162,7 +168,7 @@ def test_crossvalidation(settings, df, model_name, model_path):
         test_list       = settings["training"]["crossvalidation"]["test_set"]
         test_loader, test_dataset     = get_loader(settings, test_list, True)
 
-        test_patch_df, test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
+        test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
 
         for item_name, reconstructed_prediction in reconstructed_patches:
             item_save_path = f"{model_path}/{test_fold}/{item_name}"
@@ -245,10 +251,10 @@ def _write_progress(test_fold, val_fold, epoch, eval_loss, metrics, df):
 
 # Initialize cuda
 torch.cuda.init()
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 
-p_ = "/home/ramial-maskari/Documents/syndatron/segmentation/output/models/"
-model_name = "DeepVessel DiceLoss 2020 06 30 leanclassification2d Adam factor 0.5 BCELoss LR=5e-4 Blocksize 100 Epochs 50  | 2020-06-30 23:42:57.095610"
+p_ = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/"
+model_name = "UNET 3 px mask leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 50  | 2020-07-21 12:31:39.942065"
 
 # Run the program
 run_validation(p_, model_name)

@@ -22,6 +22,9 @@ from dataset.training_dataset import TrainingDataset
 #TODO
 # CenterlineDiceLoss
 # Remove deprecated parts
+def _net():
+    net = Unet3D()
+    return net
 
 def crossvalidation(settings):
     """Splits the input list into a 1/test_split_rate splits containing test and train data
@@ -59,7 +62,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
     """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    net             = Unet3D()#Deep_Vessel_Net_FC()
+    net             = _net()#Deep_Vessel_Net_FC()
     criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
     optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
     lr              = optimizer.state_dict()["param_groups"][0]["lr"]
@@ -213,7 +216,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
-        best_model      = Deep_Vessel_Net_FC()
+        best_model      = _net()
         best_model.load_model(best_model_data_path)
         best_model      = best_model.cuda()
         criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)

@@ -96,9 +96,7 @@ class Unet3D(torch.nn.Module):
 
     def load_model(self, path):
         t_ = torch.load(path)
-        print("T_ {}".format(t_))
         self.load_state_dict(t_)
-        print("Loaded model from {0}".format(str(path)))
 
     def weight_hist(self, x):
         pass
