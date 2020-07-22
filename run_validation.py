@@ -22,6 +22,10 @@ from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
 
+def _criterion():
+    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    return criterion
+
 def _net():
     net = Unet3D()
     return net
@@ -162,7 +166,7 @@ def test_crossvalidation(settings, df, model_name, model_path):
         best_model      = _net()
         best_model.load_model(best_model_data_path)
         best_model      = best_model.cuda()
-        criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)
+        criterion       = _criterion()
 
         # Test on the best candidate and save the settings
         test_list       = settings["training"]["crossvalidation"]["test_set"]
@@ -196,13 +200,18 @@ def test(net, criterion, dataloader, dataset):
     net.eval()
     running_loss = 0.0
     d_len = len(dataloader)
-
+    
     # Saving the TP, TN, FP, FN for all items to calculate stats
     result_list = [0, 0, 0, 0]
 
-    # In order to save patches, the subvolumes need to be saved in 
-    # a dict grouped by their name
-    item_dict = {}
+    item_dict = -1
+    if not dataset.original_information()[2] == -1:
+        # In order to save patches, the subvolumes need to be saved in 
+        # a dict grouped by their name
+        item_dict = {}
+    else:
+        reconstructed_patches = []
+
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
@@ -218,16 +227,21 @@ def test(net, criterion, dataloader, dataset):
         res[res <= 0.5] = 0.0
 
         item_name = item["name"][0]
-        if item_name not in item_dict:
-            item_dict[item_name] = []
-        item_dict[item_name].append(res.astype(np.float32))
+        if not item_dict == -1:
+            if item_name not in item_dict:
+                item_dict[item_name] = []
+            item_dict[item_name].append(res.astype(np.float32))
+        else:
+            res = res.squeeze().squeeze()
+            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
 
         res             = np.ravel(res)
         target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-    reconstructed_patches = reconstruct_patches(item_dict, dataset)
+    if not item_dict == -1:
+        reconstructed_patches = reconstruct_patches(item_dict, dataset)
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
@@ -253,8 +267,8 @@ def _write_progress(test_fold, val_fold, epoch, eval_loss, metrics, df):
 torch.cuda.init()
 torch.cuda.set_device(0)
 
-p_ = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/"
-model_name = "UNET 3 px mask leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 50  | 2020-07-21 12:31:39.942065"
+p_ = "/home/ramial-maskari/Documents/cfos/output/models/"
+model_name = "UNET 3 normal circle leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 75  | 2020-07-21 19:42:43.137395"
 
 # Run the program
 run_validation(p_, model_name)

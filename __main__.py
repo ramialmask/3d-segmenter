@@ -22,6 +22,10 @@ from dataset.training_dataset import TrainingDataset
 #TODO
 # CenterlineDiceLoss
 # Remove deprecated parts
+def _criterion():
+    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    return criterion
+
 def _net():
     net = Unet3D()
     return net
@@ -63,7 +67,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
     net             = _net()#Deep_Vessel_Net_FC()
-    criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
+    criterion       = _criterion()
     optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
     lr              = optimizer.state_dict()["param_groups"][0]["lr"]
     factor          = float(settings["training"]["scheduler"]["factor"])
@@ -219,7 +223,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         best_model      = _net()
         best_model.load_model(best_model_data_path)
         best_model      = best_model.cuda()
-        criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)
+        criterion       = _criterion()
 
         # Test on the best candidate and save the settings
         test_list       = settings["training"]["crossvalidation"]["test_set"]
@@ -258,9 +262,14 @@ def test(net, criterion, dataloader, dataset):
     # Saving the TP, TN, FP, FN for all items to calculate stats
     result_list = [0, 0, 0, 0]
 
-    # In order to save patches, the subvolumes need to be saved in 
-    # a dict grouped by their name
-    item_dict = {}
+    item_dict = -1
+    if not dataset.original_information()[2] == -1:
+        # In order to save patches, the subvolumes need to be saved in 
+        # a dict grouped by their name
+        item_dict = {}
+    else:
+        reconstructed_patches = []
+
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
@@ -276,16 +285,21 @@ def test(net, criterion, dataloader, dataset):
         res[res <= 0.5] = 0.0
 
         item_name = item["name"][0]
-        if item_name not in item_dict:
-            item_dict[item_name] = []
-        item_dict[item_name].append(res.astype(np.float32))
+        if not item_dict == -1:
+            if item_name not in item_dict:
+                item_dict[item_name] = []
+            item_dict[item_name].append(res.astype(np.float32))
+        else:
+            res = res.squeeze().squeeze()
+            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
 
         res             = np.ravel(res)
         target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-    reconstructed_patches = reconstruct_patches(item_dict, dataset)
+    if not item_dict == -1:
+        reconstructed_patches = reconstruct_patches(item_dict, dataset)
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
@@ -320,7 +334,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
 
 # Initialize cuda
 torch.cuda.init()
-torch.cuda.set_device(0)
+torch.cuda.set_device(1)
 
 # Read the meta dictionary
 settings = read_meta_dict("./","train")

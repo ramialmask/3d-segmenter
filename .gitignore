@@ -137,7 +137,7 @@ tags
 meta_data.json
 
 # Json files
-.json
+*.json
 
 # Custom files:
-run_validation.py
+# run_validation.py

@@ -79,6 +79,7 @@ class TrainingDataset(Dataset):
         gt_list = []
 
         mb_size = int(self.settings["dataloader"]["block_size"])
+        self.vdivs = -1
         name_list = []
         
 
