@@ -1,10 +1,10 @@
 {
-    "input_raw_path":   "/home/ramial-maskari/Documents/cfos/input/raw_small/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/cfos/input/flood_small/",
-    "input_model_path": "/home/ramial-maskari/Documents/cfos/input/models/",
-    "output_model_path":"/home/ramial-maskari/Documents/cfos/output/models/",
+    "input_raw_path":   "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/raw/20200717_190525/",
+    "input_gt_path":    "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/gt/20200717_190525/",
+    "input_model_path": "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/models/",
+    "output_model_path":"/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"UNET 3D normal circle DiceLoss",
+    "output_folder_prefix":"UNET  3px mask centerline dice",
     "model_name":""
 }

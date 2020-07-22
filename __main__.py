@@ -14,6 +14,7 @@ from models.unet_3d_oliver import Unet3D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
+from loss.cl_dice_loss import CenterlineDiceLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
@@ -23,7 +24,7 @@ from dataset.training_dataset import TrainingDataset
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = CenterlineDiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
@@ -334,7 +335,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
 
 # Initialize cuda
 torch.cuda.init()
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 
 # Read the meta dictionary
 settings = read_meta_dict("./","train")

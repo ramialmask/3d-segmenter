@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import torch
+from torch.nn.modules.loss import _Loss
 
 def opencv_skelitonize(img):
     skel = np.zeros(img.shape, np.uint8)
@@ -32,14 +33,15 @@ def dice_loss(pred, target):
     return -((2. * intersection + smooth) /
               (iflat.sum(-1) + tflat.sum(-1) + smooth))
 
-def soft_skeletonize(x, thresh_width=10):
+def soft_skeletonize(x, thresh_width=3):
     '''
     Differenciable aproximation of morphological skelitonization operaton
     thresh_width - maximal expected width of vessel
     '''
     for i in range(thresh_width):
-        min_pool_x = torch.nn.functional.max_pool2d(x*-1, (3, 3), 1, 1)*-1
-        contour = torch.nn.functional.relu(torch.nn.functional.max_pool2d(min_pool_x, (3, 3), 1, 1) - min_pool_x)
+        min_pool_x = torch.nn.functional.max_pool3d(x*-1, 3, 1, 1)
+        min_pool_x *=-1
+        contour = torch.nn.functional.relu(torch.nn.functional.max_pool3d(min_pool_x,  3, 1, 1) - min_pool_x)
         x = torch.nn.functional.relu(x - contour)
     return x
 
@@ -55,7 +57,7 @@ def norm_intersection(center_line, vessel):
     intersection = (clf * vf).sum(-1)
     return (intersection + smooth) / (clf.sum(-1) + smooth)
 
-def soft_cldice_loss(pred, target, target_skeleton=None):
+def soft_cldice_loss(pred, target, target_skeleton=None, reduction='mean'):
     '''
     inputs shape  (batch, channel, height, width).
     calculate clDice loss
@@ -69,5 +71,14 @@ def soft_cldice_loss(pred, target, target_skeleton=None):
     iflat = norm_intersection(cl_pred, target)
     tflat = norm_intersection(target_skeleton, pred)
     intersection = iflat * tflat
-    return -((2. * intersection) /
-              (iflat + tflat))
+    
+    loss_ =((2. * intersection) /(iflat + tflat)) 
+    loss_r = getattr(torch, reduction)(loss_) * -1
+    return loss_r
+
+class CenterlineDiceLoss(_Loss):
+    def __init__(self, weight=None, size_average=None, reduce=None, reduction='sum'):
+        super(CenterlineDiceLoss, self).__init__(weight,reduction)
+
+    def forward(self, input, target, target_skeleton=None):
+        return soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction)
