@@ -17,13 +17,14 @@ from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from models.unet_3d_oliver import Unet3D
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
+from loss.cl_dice_loss import CenterlineDiceLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
 
 def _criterion():
-    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
@@ -47,51 +48,9 @@ def run_validation(p_, model_name):
     # Read the meta dict of the model
     settings = read_meta_dict(ip_, "train")
 
-    # for test_fold in range(2):
-    #     # Load settings
-    #     test_list       = settings["training"]["crossvalidation"]["test_set"]
-    #     settings["training"]["crossvalidation"]["test_set"] = test_list
-    #     for train_val_fold in range(2):
-    #         ip_= os.path.join(p_, model_name,f"{test_fold}/{train_val_fold}")
-    #         settings = read_meta_dict(ip_, "train")
-    #         df = train(settings, test_fold, train_val_fold, model_name, df)
-
     model_save_dir = os.path.join(settings["paths"]["output_model_path"], model_name)
-    # df.to_csv(f"{model_save_dir}/training.csv")
     df = pd.read_csv(f"{model_save_dir}/training.csv")
     test_crossvalidation(settings, df, model_name, model_save_dir)
-
-def train(settings, test_fold, train_val_fold, model_name, df):
-    """Trains a single model for a given test and train_val fold
-    """
-    learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    net             = _net()
-    criterion       = WeightedBinaryCrossEntropyLoss(class_frequency=True)#DiceLoss()#torch.nn.BCELoss()
-
-    p_ = "/home/ramial-maskari/Documents/syndatron/segmentation/output/models/"
-    net_path = os.path.join(p_, model_name, f"{test_fold}/{train_val_fold}/_{test_fold}_{train_val_fold}_49.dat")
-    net.load_model(net_path)
-
-
-    train_val_list = []
-    train_list = settings["training"]["crossvalidation"]["training_set"] 
-    val_list=settings["training"]["crossvalidation"]["validation_set"] 
-
-    train_loader    = get_loader(settings, train_list)
-    val_loader      = get_loader(settings, val_list)
-    
-    epoch          = int(settings["training"]["epochs"])
-    
-    net.cuda()
-    net.eval()
-    
-    print("Test Fold\tVal Fold\tEpoch\tTraining Loss\tValidation Loss\tAccuracy\tPrecision\tRecall\tDice")
-    validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
-
-    metrics = [accuracy, precision, recall, f1_dice]
-    df = _write_progress(test_fold, train_val_fold, epoch, validation_loss, metrics, df)
-
-    return df
 
 def validate_epoch(net, criterion, dataloader):
     """Evaluates a single epoch
@@ -129,8 +88,8 @@ def test_crossvalidation(settings, df, model_name, model_path):
     test_columns=["Test Fold", "Validation Fold", "Test Loss", "Test Accuracy", "Test Precision", "Test Recall", "Test Dice"]
     test_df = pd.DataFrame(columns=test_columns)
 
-    test_folds = range(0, int(1 / float(settings["training"]["crossvalidation"]["test_split_rate"])))
-    val_folds  = range(0, int(1 / float(settings["training"]["crossvalidation"]["train_val_split_rate"])) - 1)
+    test_folds = range(int(settings["training"]["crossvalidation"]["test_folds"]))
+    val_folds  = range(int(settings["training"]["crossvalidation"]["train_val_folds"]))
 
     epoch = int(settings["training"]["epochs"]) - 1
 
@@ -145,7 +104,6 @@ def test_crossvalidation(settings, df, model_name, model_path):
     for test_fold in test_folds:
         # For each of the models get best validation loss
         for val_fold in val_folds:
-            
             df_fold = df.loc[(df["Test Fold"] == test_fold) & (df["Validation Fold"] == val_fold) & (df["Epoch"] == epoch)]
             print(f"DF FOLD {test_fold} {val_fold} {epoch}\n{df_fold}")
             if df_fold["Validation Loss"].iloc[0] < min_val_loss:
@@ -267,8 +225,8 @@ def _write_progress(test_fold, val_fold, epoch, eval_loss, metrics, df):
 torch.cuda.init()
 torch.cuda.set_device(0)
 
-p_ = "/home/ramial-maskari/Documents/cfos/output/models/"
-model_name = "UNET 3 normal circle leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 75  | 2020-07-21 19:42:43.137395"
+p_ = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/"
+model_name = "UNET  3px mask centerline dice leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 75  | 2020-07-22 17:54:06.734358"
 
 # Run the program
 run_validation(p_, model_name)

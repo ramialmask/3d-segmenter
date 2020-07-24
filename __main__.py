@@ -24,12 +24,30 @@ from dataset.training_dataset import TrainingDataset
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = CenterlineDiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
     net = Unet3D()
     return net
+
+def _optimizer(settings, net):
+    learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
+    optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
+    return optimizer
+
+def _scheduler(settings, optimizer):
+    lr              = optimizer.state_dict()["param_groups"][0]["lr"]
+    factor          = float(settings["training"]["scheduler"]["factor"])
+    patience        = int(settings["training"]["scheduler"]["patience"])
+    min_factor      = float(settings["training"]["scheduler"]["min_factor"])
+    scheduler       = optim.lr_scheduler.ReduceLROnPlateau(optimizer,\
+                        "min",factor=factor, \
+                        patience=patience, \
+                        threshold_mode="abs", \
+                        min_lr=lr*min_factor, \
+                        verbose=True)
+    return scheduler
 
 def crossvalidation(settings):
     """Splits the input list into a 1/test_split_rate splits containing test and train data
@@ -42,18 +60,22 @@ def crossvalidation(settings):
     """
     input_list = os.listdir(settings["paths"]["input_raw_path"])
 
-    test_split_rate = float(settings["training"]["crossvalidation"]["test_split_rate"])
-    train_val_split_rate = float(settings["training"]["crossvalidation"]["train_val_split_rate"])
+    test_split_rate         = float(settings["training"]["crossvalidation"]["test_split_rate"])
+    test_split_amount       = int(settings["training"]["crossvalidation"]["test_folds"])
+    train_val_split_rate    = float(settings["training"]["crossvalidation"]["train_val_split_rate"])
+    train_val_split_amount  = int(settings["training"]["crossvalidation"]["train_val_folds"])
     
-    test_lists = split_list(input_list, test_split_rate)
+    test_lists = split_list(input_list, test_split_rate, test_split_amount)
     
     df = pd.DataFrame(columns=["Test Fold","Validation Fold", "Epoch", "Train Loss", "Validation Loss", "Validation Accuracy", "Validation Precision", "Validation Recall", "Validation Dice"])
 
+    df.set_index(["Test Fold","Validation Fold","Epoch"])
     model_name = get_model_name(settings)
 
     for test_fold, test_train_list in enumerate(test_lists):
         test_list       = test_train_list[1]
-        train_val_lists  = split_list(test_train_list[0], train_val_split_rate)
+        print(f"Length Test List:\t{len(test_list)}\nFirst ten entries:\t{test_list[:10]}")
+        train_val_lists  = split_list(test_train_list[0], train_val_split_rate, train_val_split_amount)
         settings["training"]["crossvalidation"]["test_set"] = test_list
         for train_val_fold, train_val_list in enumerate(train_val_lists):
             df = train(settings, train_val_list, test_fold, train_val_fold, model_name, df)
@@ -66,24 +88,17 @@ def crossvalidation(settings):
 def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
     """
-    learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    net             = _net()#Deep_Vessel_Net_FC()
+    net             = _net()
     criterion       = _criterion()
-    optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
-    lr              = optimizer.state_dict()["param_groups"][0]["lr"]
-    factor          = float(settings["training"]["scheduler"]["factor"])
-    patience        = int(settings["training"]["scheduler"]["patience"])
-    min_factor      = float(settings["training"]["scheduler"]["min_factor"])
-    scheduler       = optim.lr_scheduler.ReduceLROnPlateau(optimizer,\
-                        "min",factor=factor, \
-                        patience=patience, \
-                        threshold_mode="abs", \
-                        min_lr=lr*min_factor, \
-                        verbose=True)
+    optimizer       = _optimizer(settings, net)
+    scheduler       = _scheduler(settings, optimizer)
 
 
     settings["training"]["crossvalidation"]["training_set"] = train_val_list[0]
     settings["training"]["crossvalidation"]["validation_set"] = train_val_list[1]
+
+    print(f"Length Train List:\t{len(train_val_list[0])}\nFirst ten entries:\t{train_val_list[0][:10]}")
+    print(f"Length Val List:\t{len(train_val_list[1])}\nFirst ten entries:\t{train_val_list[1][:10]}")
 
     train_loader, _    = get_loader(settings, train_val_list[0])
     val_loader, _      = get_loader(settings, train_val_list[1])
@@ -193,8 +208,8 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     test_columns=["Test Fold", "Validation Fold", "Test Loss", "Test Accuracy", "Test Precision", "Test Recall", "Test Dice"]
     test_df = pd.DataFrame(columns=test_columns)
 
-    test_folds = range(0, int(1 / float(settings["training"]["crossvalidation"]["test_split_rate"])) - 1)
-    val_folds  = range(0, int(1 / float(settings["training"]["crossvalidation"]["train_val_split_rate"])) - 1)
+    test_folds = range(int(settings["training"]["crossvalidation"]["test_folds"]))
+    val_folds  = range(int(settings["training"]["crossvalidation"]["train_val_folds"]))
 
     epoch = int(settings["training"]["epochs"]) - 1
 
@@ -206,10 +221,10 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
 
     for test_fold in test_folds:
-        print(f"Test fold {test_fold}")
         # For each of the models get best validation loss
         for val_fold in val_folds:
             df_fold = df.loc[(df["Test Fold"] == test_fold) & (df["Validation Fold"] == val_fold) & (df["Epoch"] == epoch)]
+            print(f"DF FOLD {test_fold} {val_fold} {df_fold}")
             if df_fold["Validation Loss"].iloc[0] < min_val_loss:
                 min_val_loss = df_fold["Validation Loss"].iloc[0]
                 best_fold = df_fold
@@ -322,6 +337,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
                             "Validation Recall":[metrics[-2]],\
                             "Validation Dice":[metrics[-1]],\
                             })
+    df_item.set_index(["Test Fold","Validation Fold","Epoch"])
     df = df.append(df_item)
     
     # Write the progress to the tensorboard

@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"75",
+    "epochs":"1",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
@@ -8,8 +8,10 @@
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_split_rate":"0.5",
-        "train_val_split_rate":"0.5"
+        "test_folds":"2",
+        "train_val_folds":"2",
+        "test_split_rate":"0.2",
+        "train_val_split_rate":"0.2"
     },
     "optimizer":{
         "class":"Adam",

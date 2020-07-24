@@ -5,6 +5,6 @@
     "output_model_path":"/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"UNET  3px mask centerline dice",
+    "output_folder_prefix":"TESTRUN",
     "model_name":""
 }

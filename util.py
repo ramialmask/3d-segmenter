@@ -14,7 +14,7 @@ def get_model_name(settings):
 
     return model_name
 
-def split_list(input_list, split_rate):
+def split_list(input_list, split_rate, split_amount=-1):
     """Splits a list into n = 1 / split_rate pairs of two disjunct sublists
     Args:
         input_list (list):   List containing all elements
@@ -22,8 +22,9 @@ def split_list(input_list, split_rate):
     Returns:
         A list containing n tuples of lists
     """
+    if split_amount == -1:
+        split_amount = int(1/split_rate)
     split_size = int(np.ceil(len(input_list) * split_rate))
-    split_amount = int(1/split_rate)
     shuffle(input_list)
     result_list = []
     for iteration in range(split_amount):
