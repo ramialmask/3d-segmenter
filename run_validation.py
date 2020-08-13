@@ -50,7 +50,7 @@ def run_validation(p_, model_name):
 
     model_save_dir = os.path.join(settings["paths"]["output_model_path"], model_name)
     df = pd.read_csv(f"{model_save_dir}/training.csv")
-    test_crossvalidation(settings, df, model_name, model_save_dir)
+    test_crossvalidation(settings, df, model_name, model_save_dir, True)
 
 def validate_epoch(net, criterion, dataloader):
     """Evaluates a single epoch
@@ -81,7 +81,7 @@ def validate_epoch(net, criterion, dataloader):
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice
 
-def test_crossvalidation(settings, df, model_name, model_path):
+def test_crossvalidation(settings, df, model_name, model_path, real_data = False):
     """Calculate the best epoch for each test fold and compute the score of the best model
     Test scores are saved in test.csv
     """
@@ -117,6 +117,8 @@ def test_crossvalidation(settings, df, model_name, model_path):
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
+        settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/raw/"
+        settings["paths"]["input_gt_path"]  = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/gt/" 
 
         # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/raw/"
         # settings["paths"]["input_gt_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/gt/"
@@ -149,8 +151,12 @@ def test_crossvalidation(settings, df, model_name, model_path):
                             "Test Dice":     [f1_dice],\
                             })
         test_df = test_df.append(test_item)
-    test_df.to_csv(f"{model_path}/test_scores.csv")
-    test_patch_df.to_csv(f"{model_path}/test.csv")
+    if not real_data:
+        test_df.to_csv(f"{model_path}/test_scores.csv")
+        test_patch_df.to_csv(f"{model_path}/test.csv")
+    else:
+        test_df.to_csv(f"{model_path}/test_scores_real.csv")
+        test_patch_df.to_csv(f"{model_path}/test_real.csv")
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
@@ -226,7 +232,7 @@ torch.cuda.init()
 torch.cuda.set_device(0)
 
 p_ = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/"
-model_name = "UNET  3px mask centerline dice leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 75  | 2020-07-22 17:54:06.734358"
+model_name = "DiceLoss UNet3D 20200723_234254 full leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 40  | 2020-07-31 15:16:17.505539"
 
 # Run the program
 run_validation(p_, model_name)

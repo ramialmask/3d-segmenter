@@ -14,7 +14,7 @@ from models.unet_3d_oliver import Unet3D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
-from loss.cl_dice_loss import CenterlineDiceLoss
+from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
@@ -24,7 +24,7 @@ from dataset.training_dataset import TrainingDataset
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = MixedDiceLoss(0.1)#DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
@@ -96,6 +96,8 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
 
     settings["training"]["crossvalidation"]["training_set"] = train_val_list[0]
     settings["training"]["crossvalidation"]["validation_set"] = train_val_list[1]
+    settings["training"]["loss"]["class"] = criterion.__class__.__name__
+    settings["network"] = net.__class__.__name__
 
     print(f"Length Train List:\t{len(train_val_list[0])}\nFirst ten entries:\t{train_val_list[0][:10]}")
     print(f"Length Val List:\t{len(train_val_list[1])}\nFirst ten entries:\t{train_val_list[1][:10]}")
@@ -324,7 +326,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     """
 
     # Print the test progress to std.out
-    print(f"{test_fold}\t\t{val_fold}\t\t{epoch}\t{train_loss:.4f}\t{eval_loss:.4f}\t\t{metrics[0]:.4f}\t\t{metrics[1]:.4f}\t\t{metrics[2]:.4f}\t{metrics[3]:.4f}")
+    print(f"{test_fold}\t\t{val_fold}\t\t{epoch}\t{train_loss:.4f}\t\t{eval_loss:.4f}\t\t\t{metrics[0]:.4f}\t\t{metrics[1]:.4f}\t\t{metrics[2]:.4f}\t{metrics[3]:.4f}")
     
     # Construct Dataframe for train.csv
     df_item = pd.DataFrame({"Test Fold":[test_fold],\
