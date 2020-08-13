@@ -1,6 +1,7 @@
 import os
 import json
 from dataset.training_dataset import TrainingDataset
+from dataset.training_dataset_2D import TrainingDataset2D
 from torch.utils.data import DataLoader
 
 def read_meta_dict(path, mode):
@@ -83,6 +84,6 @@ def get_loader(settings, input_list, testing=False):
         shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = TrainingDataset(settings, input_list)
+    dataset     = TrainingDataset2D(settings, input_list)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset

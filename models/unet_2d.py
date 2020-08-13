@@ -77,7 +77,7 @@ class Unet2D(torch.nn.Module):
         up_3     = self.up_3(concat_3)
 
         out = self.out(up_3)
-        out = out[:,:,2:-2,2:-2,2:-2]
+        out = out[:,:,2:-2,2:-2]
         out = torch.sigmoid(out)
         return out
 

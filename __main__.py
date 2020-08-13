@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
 from models.unet_3d_oliver import Unet3D
+from models.unet_2d import Unet2D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
@@ -28,7 +29,7 @@ def _criterion():
     return criterion
 
 def _net():
-    net = Unet3D()
+    net = Unet2D()
     return net
 
 def _optimizer(settings, net):

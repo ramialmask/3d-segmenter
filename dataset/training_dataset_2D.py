@@ -28,6 +28,7 @@ class TrainingDataset2D(Dataset):
         # create list
         image_list = []
         gt_list = []
+        name_list = []
 
         # Load data
         for item in split:
@@ -50,11 +51,20 @@ class TrainingDataset2D(Dataset):
             for z in range(image.shape[-1]):
                 # Pad
                 padding_value = int(self.settings["preprocessing"]["padding"])
+                image_gt_z = image_gt[:,:,z]
                 image_z = image[:,:,z]
                 image_z = np.pad(image_z, padding_value, "reflect")
+            
+
+                # Torchify
+                image_z = torch.tensor(image_z).float()
+                image_gt_z = torch.tensor(image_gt_z).float()
+                image_z = image_z.unsqueeze(0)
+                image_gt_z = image_gt_z.unsqueeze(0)
+
                 image_list.append(image_z)
-                gt_list.append(image_gt[:,:,z])
-            name_list.append(item)
+                gt_list.append(image_gt_z)
+                name_list.append(f"{z}_{item}")
 
         self.item_list = [image_list, gt_list, name_list]
 
