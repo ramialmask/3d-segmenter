@@ -58,7 +58,7 @@ def crossvalidation(settings):
     Args:
         settings (dict): A settings dictionary
     """
-    input_list = os.listdir(settings["paths"]["input_raw_path"])
+    input_list = os.listdir(settings["paths"]["input_gt_path"])
 
     test_split_rate         = float(settings["training"]["crossvalidation"]["test_split_rate"])
     test_split_amount       = int(settings["training"]["crossvalidation"]["test_folds"])
