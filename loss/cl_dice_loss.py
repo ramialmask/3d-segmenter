@@ -1,7 +1,8 @@
 import numpy as np
 import cv2
 import torch
-from torch.nn.modules.loss import _Loss
+from torch.nn.modules.loss import _Loss, _WeightedLoss 
+from loss.weighted_binary_cross_entropy_loss import bce
 
 def opencv_skelitonize(img):
     skel = np.zeros(img.shape, np.uint8)
@@ -20,7 +21,7 @@ def opencv_skelitonize(img):
             done = True
     return skel
 
-def dice_loss(pred, target):
+def dice_loss(pred, target, reduction='mean'):
     '''
     inputs shape  (batch, channel, height, width).
     calculate dice loss per batch and channel of sample.
@@ -30,8 +31,10 @@ def dice_loss(pred, target):
     iflat = pred.view(*pred.shape[:2], -1) #batch, channel, -1
     tflat = target.view(*target.shape[:2], -1)
     intersection = (iflat * tflat).sum(-1)
-    return -((2. * intersection + smooth) /
+    loss_ = ((2. * intersection + smooth) /
               (iflat.sum(-1) + tflat.sum(-1) + smooth))
+    loss_r = getattr(torch, reduction)(loss_) * -1
+    return loss_r
 
 def soft_skeletonize(x, thresh_width=3):
     '''
@@ -82,3 +85,26 @@ class CenterlineDiceLoss(_Loss):
 
     def forward(self, input, target, target_skeleton=None):
         return soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction)
+
+class MixedDiceLoss(_Loss):
+    def __init__(self, weight_CL, weight=None, size_average=None, reduce=None, reduction='sum'):
+        super(MixedDiceLoss, self).__init__(weight,reduction)
+        self.weight_CL = weight_CL
+
+    def forward(self, input, target, target_skeleton=None):
+        cldice_loss = soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction) 
+        dloss = dice_loss(input, target)
+        loss = self.weight_CL * cldice_loss + (1-self.weight_CL) * dloss
+        return loss
+
+class WBCECenterlineLoss(_WeightedLoss):
+    def __init__(self, weight_CL, weight=None, size_average=None, reduce=None, reduction='sum', class_frequency=False):
+        super(WBCECenterlineLoss, self).__init__(weight,reduction)
+        self.weight_CL = weight_CL
+        self.class_frequency = class_frequency
+
+    def forward(self, input, target, target_skeleton=None):
+        cldice_loss = soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction) 
+        wbce_loss = bce(input, target, weights=self.weight, class_frequency=self.class_frequency, reduction=self.reduction)
+        loss = self.weight_CL * cldice_loss + (1-self.weight_CL) * wbce_loss
+        return loss
