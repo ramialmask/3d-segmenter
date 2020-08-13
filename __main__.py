@@ -21,11 +21,8 @@ from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
 
-#TODO
-# CenterlineDiceLoss
-# Remove deprecated parts
 def _criterion():
-    criterion = MixedDiceLoss(0.1)#DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
@@ -281,13 +278,8 @@ def test(net, criterion, dataloader, dataset):
     # Saving the TP, TN, FP, FN for all items to calculate stats
     result_list = [0, 0, 0, 0]
 
-    item_dict = -1
-    if not dataset.original_information()[2] == -1:
-        # In order to save patches, the subvolumes need to be saved in 
-        # a dict grouped by their name
-        item_dict = {}
-    else:
-        reconstructed_patches = []
+    item_dict = {}
+    reconstructed_patches = []
 
     for item in dataloader:
         volume       = item["volume"]
@@ -304,21 +296,23 @@ def test(net, criterion, dataloader, dataset):
         res[res <= 0.5] = 0.0
 
         item_name = item["name"][0]
-        if not item_dict == -1:
-            if item_name not in item_dict:
-                item_dict[item_name] = []
-            item_dict[item_name].append(res.astype(np.float32))
+        item_z = item_name.split("$")[0]
+        item_image = item_name.split("$")[1]
+
+        print(f"Result shape {res.shape}")
+        if item_image in item_dict.keys():
+            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
         else:
-            res = res.squeeze().squeeze()
-            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
+            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
 
         res             = np.ravel(res)
         target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-    if not item_dict == -1:
-        reconstructed_patches = reconstruct_patches(item_dict, dataset)
+        
+
+    reconstructed_patches = reconstruct_patches_2d(item_dict, dataset)
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
@@ -346,9 +340,9 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     # Write the progress to the tensorboard
     writer.add_scalar(f"Loss/Training", train_loss, epoch)
     writer.add_scalar(f"Loss/Validation", eval_loss, epoch)
-    writer.add_scalar(f"Validation Metrics/Precision", metrics[0], epoch)
-    writer.add_scalar(f"Validation Metrics/Recall", metrics[1], epoch)
-    writer.add_scalar(f"Validation Metrics/Accuracy", metrics[-2], epoch)
+    writer.add_scalar(f"Validation Metrics/Accuracy", metrics[0], epoch)
+    writer.add_scalar(f"Validation Metrics/Precision", metrics[1], epoch)
+    writer.add_scalar(f"Validation Metrics/Recall", metrics[-2], epoch)
     writer.add_scalar(f"Validation Metrics/Dice", metrics[-1], epoch)
     return df
 

@@ -32,14 +32,16 @@ class TrainingDataset2D(Dataset):
 
         # Load data
         for item in split:
-
             item_nii_path   = os.path.join(nii_path, item)
             item_gt_path    = os.path.join(gt_path, item)
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
-            image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
-
+            image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1)
+            
+            self.original_shape, self.original_type = image.shape, image.dtype
+            
             image = image.astype(np.int64)
+            image_gt = image_gt.astype(np.int64)
 
             if transform:
                 image       = transform(image)
@@ -64,12 +66,12 @@ class TrainingDataset2D(Dataset):
 
                 image_list.append(image_z)
                 gt_list.append(image_gt_z)
-                name_list.append(f"{z}_{item}")
+                name_list.append(f"{z}${item}")
 
         self.item_list = [image_list, gt_list, name_list]
 
     def original_information(self):
-        return self.original_shape, self.original_type, self.vdivs
+        return self.original_shape, self.original_type
 
     def __len__(self):
         return len(self.item_list[0])

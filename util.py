@@ -70,6 +70,20 @@ def reconstruct_patches(item_dict,dataset):
         result_list.append((item_name, reconstructed_prediction))
     return result_list
 
+def reconstruct_patches_2d(item_dict, dataset):
+    original_shape, original_type = dataset.original_information()
+    result_list = []
+    for item_name in item_dict.keys():
+        print(f"Reconstructing {item_name}")
+        pred = item_dict[item_name]
+        sorted_pred = sorted(pred, key=lambda x: x[0])
+        reconstructed_prediction = np.array([x[1] for x in sorted_pred]).astype(original_type)
+        print(f"Reconstructed shape {reconstructed_prediction.shape}")
+        result_list.append((item_name, reconstructed_prediction))
+    return result_list
+
+
+
 def get_volume_from_patches3d(patches4d, divs = (3,3,6), offset=(0,0,0)):
     """Reconstruct the minibatches, by Giles Tetteh
     Keep offset of (0,0,0) for fully padded volumes
