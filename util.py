@@ -78,11 +78,12 @@ def reconstruct_patches_2d(item_dict, dataset):
         pred = item_dict[item_name]
         sorted_pred = sorted(pred, key=lambda x: x[0])
         reconstructed_prediction = np.array([x[1] for x in sorted_pred]).astype(original_type)
+        reconstructed_prediction = np.swapaxes(reconstructed_prediction, 1, 2)
+        reconstructed_prediction = np.transpose(reconstructed_prediction)
+
         print(f"Reconstructed shape {reconstructed_prediction.shape}")
         result_list.append((item_name, reconstructed_prediction))
     return result_list
-
-
 
 def get_volume_from_patches3d(patches4d, divs = (3,3,6), offset=(0,0,0)):
     """Reconstruct the minibatches, by Giles Tetteh

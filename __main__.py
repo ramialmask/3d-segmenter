@@ -299,7 +299,6 @@ def test(net, criterion, dataloader, dataset):
         item_z = item_name.split("$")[0]
         item_image = item_name.split("$")[1]
 
-        print(f"Result shape {res.shape}")
         if item_image in item_dict.keys():
             item_dict[item_image].append((item_z, res.squeeze().squeeze()))
         else:
