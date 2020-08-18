@@ -1,7 +1,4 @@
 import os
-import torch
-import numpy as np
-import os
 import shutil
 import torch
 
@@ -13,22 +10,24 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
-from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from models.unet_3d_oliver import Unet3D
+from models.unet_2d import Unet2D
+from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats
 from loss.dice_loss import DiceLoss
-from loss.cl_dice_loss import CenterlineDiceLoss
+from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
+from blobanalysis import get_patch_overlap
 
 def _criterion():
-    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
-    net = Unet3D()
+    net = Unet2D()
     return net
 
 def run_validation(p_, model_name):
@@ -98,7 +97,8 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
     min_val_loss = 9000000000001
     best_fold = -1
 
-    test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
+
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Hits','Misses'])
 
     print(f"DF \n{df}")
     for test_fold in test_folds:
@@ -111,14 +111,15 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
                 best_fold = df_fold
         print(f"Iteration \n{best_fold}\n")
 
-        best_val_fold           = best_fold["Validation Fold"]#.iloc[0]
+        print(f"Best fold is {best_fold}")
+        best_val_fold           = best_fold["Validation Fold"].iloc[0]
         best_model_path         = os.path.join(model_path, str(test_fold), str(val_fold))
         best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch}.dat"
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
-        settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/raw/"
-        settings["paths"]["input_gt_path"]  = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/gt/" 
+        # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/raw/"
+        # settings["paths"]["input_gt_path"]  = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/gt/" 
 
         # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/raw/"
         # settings["paths"]["input_gt_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/gt/"
@@ -139,6 +140,19 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
+            gt_path = settings["paths"]["input_gt_path"]
+            target = read_nifti(gt_path + item_name)
+            h,m = get_patch_overlap(reconstructed_prediction, target)
+
+            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                "Validation Fold":[best_val_fold],\
+                                "Patch":          [item_name],\
+                                "Hits":           [h],\
+                                "Misses":         [m],\
+                                })
+            test_overlap_df = test_overlap_df.append(test_overlap_item)
+            print(f"{item_name} {h} {m}")
+
         print(f"Test scores")
         print("Test Fold\tValidation Fold\tTest Loss\tAccuracy\tPrecision\tRecall\tDice")
         print(f"{test_fold}\t{best_val_fold}\t{test_loss}\t{accuracy}\t{precision}\t{recall}\t{f1_dice}")
@@ -151,12 +165,12 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
                             "Test Dice":     [f1_dice],\
                             })
         test_df = test_df.append(test_item)
+
+    test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
     if not real_data:
         test_df.to_csv(f"{model_path}/test_scores.csv")
-        test_patch_df.to_csv(f"{model_path}/test.csv")
     else:
         test_df.to_csv(f"{model_path}/test_scores_real.csv")
-        test_patch_df.to_csv(f"{model_path}/test_real.csv")
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
@@ -168,13 +182,8 @@ def test(net, criterion, dataloader, dataset):
     # Saving the TP, TN, FP, FN for all items to calculate stats
     result_list = [0, 0, 0, 0]
 
-    item_dict = -1
-    if not dataset.original_information()[2] == -1:
-        # In order to save patches, the subvolumes need to be saved in 
-        # a dict grouped by their name
-        item_dict = {}
-    else:
-        reconstructed_patches = []
+    item_dict = {}
+    reconstructed_patches = []
 
     for item in dataloader:
         volume       = item["volume"]
@@ -191,21 +200,22 @@ def test(net, criterion, dataloader, dataset):
         res[res <= 0.5] = 0.0
 
         item_name = item["name"][0]
-        if not item_dict == -1:
-            if item_name not in item_dict:
-                item_dict[item_name] = []
-            item_dict[item_name].append(res.astype(np.float32))
+        item_z = item_name.split("$")[0]
+        item_image = item_name.split("$")[1]
+
+        if item_image in item_dict.keys():
+            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
         else:
-            res = res.squeeze().squeeze()
-            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
+            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
 
         res             = np.ravel(res)
         target          = np.ravel(segmentation.cpu().numpy())
         stats_          = calc_statistics(res, target)
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-    if not item_dict == -1:
-        reconstructed_patches = reconstruct_patches(item_dict, dataset)
+        
+
+    reconstructed_patches = reconstruct_patches_2d(item_dict, dataset)
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
@@ -231,8 +241,8 @@ def _write_progress(test_fold, val_fold, epoch, eval_loss, metrics, df):
 torch.cuda.init()
 torch.cuda.set_device(0)
 
-p_ = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/"
-model_name = "DiceLoss UNet3D 20200723_234254 full leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 40  | 2020-07-31 15:16:17.505539"
+p_ = "/home/ramial-maskari/Documents/cFos/output/models/"
+model_name = "Mixed GT cFos 2D BCELoss  Adam factor 0.5  LR=1e-3 Blocksize 100 Epochs 180  | 2020-08-14 14:50:45.630390"
 
 # Run the program
 run_validation(p_, model_name)

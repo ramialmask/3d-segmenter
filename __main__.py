@@ -20,6 +20,7 @@ from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLo
 from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
+from blobanalysis import get_patch_overlap
 
 def _criterion():
     criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
@@ -218,7 +219,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     min_val_loss = 9000000001
     best_fold = -1
 
-    test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Hits','Misses'])
 
     for test_fold in test_folds:
         # For each of the models get best validation loss
@@ -265,8 +266,20 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
+            gt_path = settings["paths"]["input_gt_path"]
+            target = read_nifti(gt_path + item_name)
+            h,m = get_patch_overlap(reconstructed_prediction, target)
+
+            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                "Validation Fold":[best_val_fold],\
+                                "Patch":          [item_name],\
+                                "Hits":           [h],\
+                                "Misses":         [m],\
+                                })
+            test_overlap_df = test_overlap_df.append(test_overlap_item)
+
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
-    test_patch_df.to_csv(f"{model_save_dir}/test.csv")
+    test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
