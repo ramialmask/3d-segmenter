@@ -5,6 +5,6 @@
     "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"3D Segmentation Small GT",
+    "output_folder_prefix":"2D Segmentation Small GT",
     "model_name":""
 }

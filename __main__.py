@@ -21,6 +21,7 @@ from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
 from blobanalysis import get_patch_overlap
+from classify_patches import classify_patch
 
 def _criterion():
     criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
@@ -266,8 +267,8 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            for i in range(1, 4):
-                 class_list = list(range(3-i,3))
+            for class_list in [[2],[1,2],[2,3],[1,2,3]]:
+                 # class_list = list(range(4-i,4))
                  gt_path = settings["paths"]["input_gt_path"]
                  raw_path = settings["paths"]["input_raw_path"]
                  raw_patch = read_nifti(raw_path + item_name)
