@@ -154,7 +154,7 @@ def get_patch_overlap(pred_patch, target_patch):
             if test_overlap(pred_l, target_l):
                 hits_i += 1
                 hit_target.add(target_id)
-        if hits_i == 0:
+        if hits_i == 0 or hits_i > 1:
             fp += 1
         else:
             tp += hits_i
