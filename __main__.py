@@ -219,7 +219,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     min_val_loss = 9000000001
     best_fold = -1
 
-    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Hits','Misses'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
 
     for test_fold in test_folds:
         # For each of the models get best validation loss
@@ -266,17 +266,29 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            gt_path = settings["paths"]["input_gt_path"]
-            target = read_nifti(gt_path + item_name)
-            h,m = get_patch_overlap(reconstructed_prediction, target)
+            for i in range(1, 4):
+                 class_list = list(range(3-i,3))
+                 gt_path = settings["paths"]["input_gt_path"]
+                 raw_path = settings["paths"]["input_raw_path"]
+                 raw_patch = read_nifti(raw_path + item_name)
+                 target = read_nifti(gt_path + item_name)
 
-            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                "Validation Fold":[best_val_fold],\
-                                "Patch":          [item_name],\
-                                "Hits":           [h],\
-                                "Misses":         [m],\
-                                })
-            test_overlap_df = test_overlap_df.append(test_overlap_item)
+                 pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
+                 target_classified = classify_patch(target, raw_patch, class_list)
+
+                 tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
+                 dice = tp / (tp + 0.5*(fp + fn))
+
+                 test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                     "Validation Fold":[best_val_fold],\
+                                     "Patch":          [item_name],\
+                                     "Classes":          [class_list],\
+                                     "TP":           [tp],\
+                                     "FP":         [fp],\
+                                     "FN":         [fn],\
+                                     "F1 Score":         [dice],\
+                                     })
+                 test_overlap_df = test_overlap_df.append(test_overlap_item)
 
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
