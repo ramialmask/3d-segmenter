@@ -1,10 +1,10 @@
 {
-    "input_raw_path":   "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/raw/20200717_190525/",
-    "input_gt_path":    "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/gt/20200717_190525/",
-    "input_model_path": "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/input/models/",
-    "output_model_path":"/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/",
+    "input_raw_path":   "/home/ramial-maskari/Documents/cFos/input/raw_small/",
+    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_v3/",
+    "input_model_path": "/home/ramial-maskari/Documents/cFos/input/models/",
+    "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"TESTRUN",
+    "output_folder_prefix":"3D Segmentation Small GT",
     "model_name":""
 }

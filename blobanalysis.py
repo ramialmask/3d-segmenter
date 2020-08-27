@@ -140,9 +140,9 @@ def get_patch_overlap(pred_patch, target_patch):
     """
     pred = get_blobs_fast(pred_patch)
     target = get_blobs_fast(target_patch)
-    # tp, tn, fp, fn = 0, 0, 0, 0 #TODO
+    tp, fp, fn = 0, 0, 0
     # result_dict = {}
-    hits, misses = 0, 0
+    hit_target = set()
     for blob_pred in pred:
         hits_i = 0
         pred_l = blob_pred["points"]
@@ -153,11 +153,13 @@ def get_patch_overlap(pred_patch, target_patch):
             # print(f"Testing {pred_id} {target_id}",end="\r",flush=True)
             if test_overlap(pred_l, target_l):
                 hits_i += 1
+                hit_target.add(target_id)
         if hits_i == 0:
-            misses += 1
+            fp += 1
         else:
-            hits += hits_i
-    return hits, misses
+            tp += hits_i
+    fn = len(target) - len(hit_target)
+    return tp, fp, fn
 
 #%%
 def get_blobs(volume):
