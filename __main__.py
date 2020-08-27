@@ -18,13 +18,15 @@ from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineL
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
+from blobanalysis import get_patch_overlap
 from dataset.training_dataset import TrainingDataset
+from classify_patches import classify_patch
 
 #TODO
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = MixedDiceLoss(0.1)#DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)#MixedDiceLoss(0.1)#DiceLoss()#
     return criterion
 
 def _net():
@@ -58,7 +60,7 @@ def crossvalidation(settings):
     Args:
         settings (dict): A settings dictionary
     """
-    input_list = os.listdir(settings["paths"]["input_raw_path"])
+    input_list = os.listdir(settings["paths"]["input_gt_path"])
 
     test_split_rate         = float(settings["training"]["crossvalidation"]["test_split_rate"])
     test_split_amount       = int(settings["training"]["crossvalidation"]["test_folds"])
@@ -221,7 +223,8 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     best_fold = -1
 
     test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
-
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
+    
     for test_fold in test_folds:
         # For each of the models get best validation loss
         for val_fold in val_folds:
@@ -267,8 +270,34 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
+            for i in range(1, 4):
+                class_list = list(range(3-i,3))
+                gt_path = settings["paths"]["input_gt_path"]
+                raw_path = settings["paths"]["input_raw_path"]
+                raw_patch = read_nifti(raw_path + item_name)
+                target = read_nifti(gt_path + item_name)
+
+                pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
+                target_classified = classify_patch(target, raw_patch, class_list)
+
+                tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
+                dice = tp / (tp + 0.5*(fp + fn))
+
+                test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                    "Validation Fold":[best_val_fold],\
+                                    "Patch":          [item_name],\
+                                    "Classes":          [class_list],\
+                                    "TP":           [tp],\
+                                    "FP":         [fp],\
+                                    "FN":         [fn],\
+                                    "F1 Score":         [dice],\
+                                    })
+                test_overlap_df = test_overlap_df.append(test_overlap_item)
+
+
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_patch_df.to_csv(f"{model_save_dir}/test.csv")
+    test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
