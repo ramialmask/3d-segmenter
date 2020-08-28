@@ -24,7 +24,7 @@ from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
 
 def _criterion():
-    criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():

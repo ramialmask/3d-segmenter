@@ -1,10 +1,10 @@
 {
     "input_raw_path":   "/home/ramial-maskari/Documents/cFos/input/raw_small/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_v3/",
+    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_mix_v3/",
     "input_model_path": "/home/ramial-maskari/Documents/cFos/input/models/",
     "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"2D Segmentation Small GT",
+    "output_folder_prefix":"2D Segmentation WBCE MIXED GT",
     "model_name":""
 }

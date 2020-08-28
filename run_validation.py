@@ -21,9 +21,10 @@ from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
 from blobanalysis import get_patch_overlap
+from classify_patches import classify_patch
 
 def _criterion():
-    criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)
     return criterion
 
 def _net():
@@ -98,7 +99,7 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
     best_fold = -1
 
 
-    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Hits','Misses'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
 
     print(f"DF \n{df}")
     for test_fold in test_folds:
@@ -140,18 +141,29 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            gt_path = settings["paths"]["input_gt_path"]
-            target = read_nifti(gt_path + item_name)
-            h,m = get_patch_overlap(reconstructed_prediction, target)
+            for class_list in [[2],[1,2],[2,3],[1,2,3]]:
+                 # class_list = list(range(4-i,4))
+                 gt_path = settings["paths"]["input_gt_path"]
+                 raw_path = settings["paths"]["input_raw_path"]
+                 raw_patch = read_nifti(raw_path + item_name)
+                 target = read_nifti(gt_path + item_name)
 
-            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                "Validation Fold":[best_val_fold],\
-                                "Patch":          [item_name],\
-                                "Hits":           [h],\
-                                "Misses":         [m],\
-                                })
-            test_overlap_df = test_overlap_df.append(test_overlap_item)
-            print(f"{item_name} {h} {m}")
+                 pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
+                 target_classified = classify_patch(target, raw_patch, class_list)
+
+                 tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
+                 dice = tp / (tp + 0.5*(fp + fn))
+
+                 test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                     "Validation Fold":[best_val_fold],\
+                                     "Patch":          [item_name],\
+                                     "Classes":          [class_list],\
+                                     "TP":           [tp],\
+                                     "FP":         [fp],\
+                                     "FN":         [fn],\
+                                     "F1 Score":         [dice],\
+                                     })
+                 test_overlap_df = test_overlap_df.append(test_overlap_item)
 
         print(f"Test scores")
         print("Test Fold\tValidation Fold\tTest Loss\tAccuracy\tPrecision\tRecall\tDice")
@@ -164,9 +176,12 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
                             "Test Recall":   [recall],\
                             "Test Dice":     [f1_dice],\
                             })
+        print("Overlap scores")
+        print(test_overlap_df)
         test_df = test_df.append(test_item)
 
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
+    print(test_overlap_df)
     if not real_data:
         test_df.to_csv(f"{model_path}/test_scores.csv")
     else:
@@ -242,7 +257,7 @@ torch.cuda.init()
 torch.cuda.set_device(0)
 
 p_ = "/home/ramial-maskari/Documents/cFos/output/models/"
-model_name = "Mixed GT cFos 2D BCELoss  Adam factor 0.5  LR=1e-3 Blocksize 100 Epochs 180  | 2020-08-14 14:50:45.630390"
+model_name = "2D Segmentation WBCE Small GT leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 100  | 2020-08-28 07:11:52.650379"
 
 # Run the program
 run_validation(p_, model_name)

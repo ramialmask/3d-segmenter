@@ -9,12 +9,12 @@ from cc3d import connected_components
 
 #%%
 def point_dist(p1,p2):
-    ''' 
+    '''
     dist = point_dist(p1,p2)
-    
-    Returns the distance (scalar) between two points, defined as their vector norm. 
-    Points p1 and p2 need to be in p-dimensional vector format, i.e. a 1-D array 
-    containing the coordinates of the corresponding pixel/voxel in the respective 
+
+    Returns the distance (scalar) between two points, defined as their vector norm.
+    Points p1 and p2 need to be in p-dimensional vector format, i.e. a 1-D array
+    containing the coordinates of the corresponding pixel/voxel in the respective
     p-dimensional space (e.g., an image or a volume)
     '''
     ndim = len(p1)
@@ -26,9 +26,9 @@ def point_dist(p1,p2):
 
 #%%
 def point_offset(old_pointlist,offsetpoint,mode):
-    ''' 
+    '''
     new_pointlist = point_offset(old_pointlist,offsetpoint,mode)
-    
+
     Adds or subtracts offsetpoint from/to each point in old_pointlist. This can be
     used to switch between absolute and relative coordinates
     '''
@@ -40,15 +40,15 @@ def point_offset(old_pointlist,offsetpoint,mode):
 
 #%%
 def delete_points(old_list,points):
-    ''' 
+    '''
     new_list = delete_points(old_list,points)
-    
+
     Returns a list of all points in 'old_list' that are not part of the list 'points'.
     (The 'old_list' will not be modified by this function.)
     '''
     new_list = old_list.copy()
     for point in points:
-        try: 
+        try:
             new_list.remove(point)
         except:
             pass
@@ -56,9 +56,9 @@ def delete_points(old_list,points):
 
 #%%
 def add_points(old_list,points):
-    ''' 
+    '''
     new_list = add_points(old_list,points)
-    
+
     Returns a list of all points in 'old_list' plus those in 'points' that are not already in old_list
     (The 'old_list' will not be modified by this function.)
     '''
@@ -69,9 +69,9 @@ def add_points(old_list,points):
 
 #%%
 def get_overlap(pointlist1,pointlist2):
-    ''' 
+    '''
     overlappingpoints = get_overlap(pointlist1,pointlist2)
-    
+
     Returns a list of all points in 'pointlist2' that are overlapping with the list of
     points provided in 'pointlist1'.
     '''
@@ -82,9 +82,9 @@ def get_overlap(pointlist1,pointlist2):
 
 #%%
 def test_overlap(pointlist1,pointlist2):
-    ''' 
+    '''
     test_result = test_overlap(pointlist1,pointlist2)
-    
+
     Checks whether any point in pointlist1 is also in pointlist2
     '''
     # First check trivial cases with fast methods
@@ -108,14 +108,14 @@ def test_overlap(pointlist1,pointlist2):
 
 #%%
 def get_neighbors_of_blob(pointlist1,pointlist2):
-    ''' 
+    '''
     touchingpoints = get_neighbors_of_blob(pointlist1,pointlist2)
-    
+
     Returns a list of all points in 'pointlist2' that are direct neighbors to any of
     the points in the list 'pointlist1'. This includes points that are part of the blob
-    
+
     ### Idea for speedup ###
-    The current implementation calls get_overlap far more often than needed (at least for large 
+    The current implementation calls get_overlap far more often than needed (at least for large
     pointlists), as the 26 versions of currentpointlist are typically largely overlapping. However,
     the overhead involved in avoiding this may outweigh the benefits (1 implementation tested, but was not faster)
     '''
@@ -136,42 +136,76 @@ def get_neighbors_of_blob(pointlist1,pointlist2):
 def get_patch_overlap(pred_patch, target_patch):
     """Test for overlap in two patches
     Returns:
-        true positive, true negative, false positive, false negative
+    true positive, true negative, false positive, false negative
     """
     pred = get_blobs_fast(pred_patch)
     target = get_blobs_fast(target_patch)
+
+    # Create a list of all available targets
+    # Could work better with a dict
+    t_s = set()
+    t_d = {}
+    for i in target:
+        t_s.add(i["id"])
+        t_d[i["id"]] = i["points"]
+
     tp, fp, fn = 0, 0, 0
-    # result_dict = {}
-    hit_target = set()
     for blob_pred in pred:
         hits_i = 0
         pred_l = blob_pred["points"]
         pred_id = blob_pred["id"]
-        for blob_target in target:
-            target_l = blob_target["points"]
-            target_id = blob_target["id"]
-            # print(f"Testing {pred_id} {target_id}",end="\r",flush=True)
-            if test_overlap(pred_l, target_l):
-                hits_i += 1
-                hit_target.add(target_id)
-        if hits_i == 0 or hits_i > 1:
+        for target_id in t_s:
+            target_l = t_d[target_id]
+            if test_overlap(pred_l, target_l) and hits_i == 0:
+                hits_i = 1
+                t_s.remove(target_id)
+                break
+        if hits_i == 0:
             fp += 1
         else:
-            tp += hits_i
-    fn = len(target) - len(hit_target)
+            tp += 1
+    fn = len(t_s)
     return tp, fp, fn
+
+# def get_patch_overlap(pred_patch, target_patch):
+#     """Test for overlap in two patches
+#     Returns:
+#         true positive, true negative, false positive, false negative
+#     """
+#     pred = get_blobs_fast(pred_patch)
+#     target = get_blobs_fast(target_patch)
+#     tp, fp, fn = 0, 0, 0
+#     # result_dict = {}
+#     hit_target = set()
+#     for blob_pred in pred:
+#         hits_i = 0
+#         pred_l = blob_pred["points"]
+#         pred_id = blob_pred["id"]
+#         for blob_target in target:
+#             target_l = blob_target["points"]
+#             target_id = blob_target["id"]
+#             # print(f"Testing {pred_id} {target_id}",end="\r",flush=True)
+#             if test_overlap(pred_l, target_l):
+#                 hits_i += 1
+#                 hit_target.add(target_id)
+#         if hits_i == 0 or hits_i > 1:
+#             fp += 1
+#         else:
+#             tp += hits_i
+#     fn = len(target) - len(hit_target)
+#     return tp, fp, fn
 
 #%%
 def get_blobs(volume):
     '''
     bloblist = get_blobs(volume)
-    
+
     This function returns a list of dictionaries, in which each dictionary
-    represents one blob in the given 'searchvolume'. A blob is defined as 
-    a set of connected points. The 'searchvolume' is expected to be a 
+    represents one blob in the given 'searchvolume'. A blob is defined as
+    a set of connected points. The 'searchvolume' is expected to be a
     p-dimensional Numpy array of zero and non-zero values. All neighboring
     non-zero values will be treated as connected points, i.e. a blob.
-    
+
     Each blob dictionary in the list 'blobs' has the following entries:
         * blob['id'] - Number of blob in searchvolume, starting with 0
         * blob['points'] - List of points in this blob. Each point is a 1D Numpy array with p coordinates (one per dimension)
@@ -181,12 +215,12 @@ def get_blobs(volume):
         * blob['CoM'] - Center of Mass (within bounding box)
         * blob['max_dist'] - Largest distance between any two points of blob
         * blob['characterization'] - Dict of further characterizations
-        
-    NB: The runtime of this function is largely independent of size of the 
+
+    NB: The runtime of this function is largely independent of size of the
     searchvolume, but grows with the number as well as the size of blobs.
     For busy 3D volumes, get_blobs_fast() can >100 times faster (but might
     falsly merge two almost-overlapping points in rare cases)
-    
+
     This version is using an external library for connected components (26-connectedness)
     that was not available at the beginning of Project Leo. Please see:
         https://github.com/seung-lab/connected-components-3d
@@ -212,9 +246,9 @@ def get_blobs(volume):
 
 #%%
 def get_single_blob(volume):
-    ''' 
+    '''
     blob = get_single_blob(volume)
-    
+
     Returns blob-dict with all points in given volume. Only valid for
     volumes for which we already know to only contain a single blob.
     Result would be the same with get_blobs() but it's faster.
@@ -244,12 +278,12 @@ def get_blobs_2D(searcharea):
 
 #%%
 def get_blobs_fast(volume):
-    ''' 
+    '''
     blobs = get_blobs_fast(volume)
-    
+
     Much faster version of get_blobs() that solves 3D blob detection via 2D projections.
     Will be >100 times faster in busy 3D volumes but may potentially yield slightly wrong
-    results. This will happen in cases where 2 neighboring blobs are so close and of such 
+    results. This will happen in cases where 2 neighboring blobs are so close and of such
     a shape that their local 2D projections will always overlap (intertwined blobs)
     '''
     blobs = []
@@ -286,7 +320,7 @@ def get_blobs_fast(volume):
                 pointlist_yz     = np.asarray(X_blob['points']) + [dy,dz]   # correct y and z offset from previous cuts
                 pointlist_yz_rel = np.asarray(X_blob['points']) - [dy2,dz2]
                 subsubsubvolume[pointlist_yz_rel[:,0],:,pointlist_yz_rel[:,1]] = volume[pointlist_yz[:,0],dx:dx+X_length,pointlist_yz[:,1]]
-                
+
                 blob = get_single_blob(subsubsubvolume)
                 blob['id'] = len(blobs)
                 blob['points'] = (np.asarray(blob['points']) + [dy+dy2,dx,dz+dz2]).tolist()
@@ -296,17 +330,17 @@ def get_blobs_fast(volume):
 
 #%%
 def characterize_blob(blob,reduced=False):
-    ''' 
+    '''
     blob = characterize_blob(blob,reduced=False)
-    
+
     This takes a dictonary 'blob' as an input, calculates various metrics
     to characterize the blob, and adds these metrics to the dictionary before
     returning it.
-    
-    For the input dictionary, only the field "points" must be given. It 
-    should be a list of points in 3D space representing the blob. The points 
+
+    For the input dictionary, only the field "points" must be given. It
+    should be a list of points in 3D space representing the blob. The points
     must be given in absolute coordinates
-    
+
     The returned dictionary will comprise the following metrics:
         * blob['offset'] - Offset from bounding box to global coordinate system
         * blob['boundingbox'] - Size of 3D box enclosing the entire blob
@@ -342,7 +376,7 @@ def characterize_blob(blob,reduced=False):
         return blob
     if(reduced):
         blob['volume'] = len(blob['points'][1])
-        return blob 
+        return blob
     canvas = np.zeros(boundingbox,np.bool)
     canvas[relpointers[:,0],relpointers[:,1],relpointers[:,2]] = 1
     # Volume
@@ -393,5 +427,5 @@ def characterize_blob(blob,reduced=False):
     # Skewness
     skewness = 2*(dist_to_MOP/max_dist - 0.5) # approaches 1 if blob is thick/dense on one end and has large tail
     blob['characterization']['skewness'] = skewness
-    
+
     return blob
