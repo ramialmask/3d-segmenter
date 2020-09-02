@@ -45,20 +45,20 @@ def write_meta_dict(path, settings, mode="train"):
     """
     path_dir = os.path.join(path, "paths.json")
     with open(path_dir, "w") as file:
-        json.dump(settings["paths"], file)
+        json.dump(settings["paths"], file, indent=4)
 
     if mode == "train":
         train_dir = os.path.join(path, "train.json")
         with open(train_dir, "w") as file:
-            json.dump(settings["training"], file)
+            json.dump(settings["training"], file, indent=4)
     elif mode == "predict":
         predict_dir = os.path.join(path, "predict.json")
         with open(predict_dir, "w") as file:
-            json.dump(settings["prediction"], file)
+            json.dump(settings["prediction"], file, indent=4)
     if mode == "count":
         partition_path = os.path.join(path, "partitioning.json")
         with open(partition_path, "w") as file:
-            json.dump(settings["partitioning"], file)
+            json.dump(settings["partitioning"], file, indent=4)
     else:
         network_path = os.path.join(path, "network.json")
         with open(network_path, "w") as file:
@@ -69,7 +69,7 @@ def write_meta_dict(path, settings, mode="train"):
             _temp["network"]        = settings["network"]
             _temp["prediction"]     = settings["prediction"]
             _temp["postprocessing"] = settings["postprocessing"]
-            json.dump(_temp, file)
+            json.dump(_temp, file, indent=4)
 
 def get_loader(settings, input_list, testing=False):
     """Retrieve a dataloader for a given input list
