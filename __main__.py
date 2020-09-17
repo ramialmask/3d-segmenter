@@ -291,6 +291,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                                      })
                  test_overlap_df = test_overlap_df.append(test_overlap_item)
 
+    print(f"\nOverlap Test:\n{test_overlap_df}")
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
