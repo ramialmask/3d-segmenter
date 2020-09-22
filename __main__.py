@@ -24,7 +24,7 @@ from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
 
 def _criterion():
-    criterion = torch.nn.BCELoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)
+    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)#torch.nn.BCELoss()
     return criterion
 
 def _net():
@@ -118,6 +118,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     for epoch in range(epochs):
         net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader)
         validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
+        
         scheduler.step(validation_loss)
 
         metrics = [accuracy, precision, recall, f1_dice]
@@ -220,7 +221,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     min_val_loss = 9000000001
     best_fold = -1
 
-    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','TP','FP','FN','F1 Score'])
 
     for test_fold in test_folds:
         # For each of the models get best validation loss
@@ -267,29 +268,23 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            for class_list in [[2],[1,2],[2,3],[1,2,3]]:
-                 # class_list = list(range(4-i,4))
-                 gt_path = settings["paths"]["input_gt_path"]
-                 raw_path = settings["paths"]["input_raw_path"]
-                 raw_patch = read_nifti(raw_path + item_name)
-                 target = read_nifti(gt_path + item_name)
+            gt_path = settings["paths"]["input_gt_path"]
+            raw_path = settings["paths"]["input_raw_path"]
+            raw_patch = read_nifti(raw_path + item_name)
+            target = read_nifti(gt_path + item_name)
 
-                 pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
-                 target_classified = classify_patch(target, raw_patch, class_list)
+            tp,fp,fn = get_patch_overlap(reconstructed_prediction, target)
+            dice = tp / (tp + 0.5*(fp + fn))
 
-                 tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
-                 dice = tp / (tp + 0.5*(fp + fn))
-
-                 test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                     "Validation Fold":[best_val_fold],\
-                                     "Patch":          [item_name],\
-                                     "Classes":          [class_list],\
-                                     "TP":           [tp],\
-                                     "FP":         [fp],\
-                                     "FN":         [fn],\
-                                     "F1 Score":         [dice],\
-                                     })
-                 test_overlap_df = test_overlap_df.append(test_overlap_item)
+            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                "Validation Fold":[best_val_fold],\
+                                "Patch":          [item_name],\
+                                "TP":           [tp],\
+                                "FP":         [fp],\
+                                "FN":         [fn],\
+                                "F1 Score":         [dice],\
+                                })
+            test_overlap_df = test_overlap_df.append(test_overlap_item)
 
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")

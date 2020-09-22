@@ -118,8 +118,6 @@ def test_crossvalidation(settings, df, model_name, model_path, real_data = False
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
-        # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/raw/"
-        # settings["paths"]["input_gt_path"]  = "/home/ramial-maskari/Documents/Neuron Segmentation Project/segmentation/input/gt/" 
 
         # settings["paths"]["input_raw_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/raw/"
         # settings["paths"]["input_gt_path"] = "/home/ramial-maskari/Documents/syndatron/segmentation/input/gt/"
