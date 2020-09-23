@@ -2,6 +2,8 @@ import os
 import json
 from dataset.training_dataset import TrainingDataset
 from dataset.training_dataset_2D import TrainingDataset2D
+from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
+from dataset.prediction_dataset_2D import PredictionDataset2D
 from torch.utils.data import DataLoader
 import numpy as np
 
@@ -91,6 +93,15 @@ def get_loader(settings, input_list, testing=False):
         shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = TrainingDataset2D(settings, input_list, norm=normalize)
+    dataset     = TrainingDataset2DWeighted(settings, input_list, norm=normalize)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return loader, dataset
+
+def get_prediction_loader(settings):
+    input_list  = os.listdir(settings["paths"]["input_raw_path"])
+    print(f"Creating dataset of size {len(input_list)}...")
+    batch_size  = int(settings["dataloader"]["batch_size"])
+    dataset     = PredictionDataset2D(settings, input_list, norm=normalize)     
+    loader      = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    print("\nDone.")
     return loader, dataset

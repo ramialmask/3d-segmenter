@@ -1,11 +1,12 @@
 {
-    "input_raw_path":   "/home/rami/Documents/Promotion/cFos/input/raw_small/",
-    "input_gt_path":    "/home/rami/Documents/Promotion/cFos/input/gt_v3/",
-    "input_weigth_path":"/home/rami/Documents/Promotion/cFos/input/gt_distance/",
-    "input_model_path": "/home/rami/Documents/Promotion/cFos/input/models/",
-    "output_model_path":"/home/rami/Documents/Promotion/cFos/output/models/",
+    "input_raw_path":   "/media/10TB/Projects/cFos/input/",
+    "input_gt_path":    "/media/10TB/Projects/cFos/segmentation/input/gt/",
+    "input_weigth_path":"/media/10TB/Projects/cFos/segmentation/input/weights/",
+    "input_model_path": "/media/10TB/Projects/cFos/segmentation/input/models/",
+    "output_model_path":"/media/10TB/Projects/cFos/segmentation/output/models/",
+    "output_prediction_path":"/media/10TB/Projects/cFos/segmentation/output/patches/",
     "writer_path":      "/home/rami/runs/",
-    "input_model":"",
-    "output_folder_prefix":"2D Segmentation Small GT Squared",
+    "input_model":"weighted_2d_unet.dat",
+    "output_folder_prefix":"Weighted2DPrediction",
     "model_name":""
 }

@@ -74,14 +74,14 @@ def reconstruct_patches_2d(item_dict, dataset):
     original_shape, original_type = dataset.original_information()
     result_list = []
     for item_name in item_dict.keys():
-        print(f"Reconstructing {item_name}")
+        # print(f"Reconstructing {item_name}")
         pred = item_dict[item_name]
         sorted_pred = sorted(pred, key=lambda x: x[0])
         reconstructed_prediction = np.array([x[1] for x in sorted_pred]).astype(original_type)
         reconstructed_prediction = np.swapaxes(reconstructed_prediction, 1, 2)
         reconstructed_prediction = np.transpose(reconstructed_prediction)
 
-        print(f"Reconstructed shape {reconstructed_prediction.shape}")
+        # print(f"Reconstructed shape {reconstructed_prediction.shape}")
         result_list.append((item_name, reconstructed_prediction))
     return result_list
 
@@ -104,3 +104,32 @@ def get_volume_from_patches3d(patches4d, divs = (3,3,6), offset=(0,0,0)):
                 volume3d[x:x+widths[0],y:y+widths[1],z:z+widths[2]] = \
                         patch[offset[0]:offset[0] + widths[0], offset[1]:offset[1]+widths[1], offset[2]:offset[2]+widths[2]]
     return volume3d
+
+def cut_volume(item, name):
+    shape = item.shape
+    new_shape = (100, 100, 100)
+    width = int(shape[0] / new_shape[0])
+    counter = 0
+    result_list = []
+    for x in range(0, width):
+        for y in range(0, width):
+            for z in range(0, width):
+                sub_item = item[x*new_shape[0]:x*new_shape[0]+new_shape[0],y*new_shape[0]:y*new_shape[0]+new_shape[0], z*new_shape[0]:z*new_shape[0] +new_shape[0]]
+                out_name = name.replace(".nii.gz",f"_{counter}.nii.gz")
+                result_list.append((out_name, sub_item))
+                counter+=1                  
+    return result_list
+
+def stitch_volume(item_list, original_shape):
+    item_shape = item_list[0].shape
+    width = int(original_shape[0] / item_shape[0])
+    counter = 0
+    result_item = np.zeros(original_shape)
+    for x in range(0, width):
+        for y in range(0, width):
+            for z in range(0, width):
+                result_item[x*item_shape[0]:x*item_shape[0]+item_shape[0],\
+                        y*item_shape[0]:y*item_shape[0]+item_shape[0],\
+                        z*item_shape[0]:z*item_shape[0] +item_shape[0]] = item_list[counter]
+                counter+=1                  
+    return result_item

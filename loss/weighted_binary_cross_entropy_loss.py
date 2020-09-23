@@ -36,7 +36,7 @@ def uniques(volume):
     volume_uniques_count = torch.stack(vl)
     return volume_uniques.type(volume.type()), volume_uniques_count.type(volume.type())
 
-def bce(input_tensor, target_tensor, weights=None, class_frequency=False, reduction='mean'):
+def bce(input_tensor, target_tensor, weights, class_frequency=False, reduction='mean'):
     # Calculate Class Frequency
     if class_frequency:
         weights = calc_class_frequency(target_tensor)
@@ -60,10 +60,26 @@ def bce(input_tensor, target_tensor, weights=None, class_frequency=False, reduct
     assert(not torch.isinf(loss_r))
     return loss_r
 
+def wbce(input_tensor, target_tensor, weights=None, reduction='mean'):
+    # If weights are given or class frequency is activated calculate with weights
+    # Add 0.00001 to take into account that a normed matrix will contain 0 and 1
+    loss_add = 0.00001
+    loss = (target_tensor * torch.log(input_tensor + loss_add)) * weights + \
+        ((1 - target_tensor) * torch.log(1 - input_tensor + loss_add)) * weights
+
+    loss_r = getattr(torch, reduction)(loss) * -1
+    if torch.isnan(loss_r):
+        print(f"Target {torch.max(target_tensor)}")
+        print(f"Input {torch.max(input_tensor)}")
+        print(f"Loss {loss_r}")
+    assert(not torch.isnan(loss_r))
+    assert(not torch.isinf(loss_r))
+    return loss_r
+
 class WeightedBinaryCrossEntropyLoss(_WeightedLoss):
     def __init__(self, weight=None, size_average=None, reduce=None, reduction='sum', class_frequency=False):
         super(WeightedBinaryCrossEntropyLoss, self).__init__(weight, size_average, reduce, reduction)
         self.class_frequency = class_frequency
 
-    def forward(self, input, target):
-        return bce(input, target, weights=self.weight, class_frequency=self.class_frequency, reduction=self.reduction)
+    def forward(self, input, target, weights):
+        return wbce(input, target, weights=weights, reduction=self.reduction)

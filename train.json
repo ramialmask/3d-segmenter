@@ -4,7 +4,8 @@
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
-        "class":"WBCELoss",
+        "class":"WeightedBinaryCrossEntropyLoss",
+        "class_frequency":"True",
         "reduction":"sum"
     },
     "crossvalidation":{
@@ -15,7 +16,7 @@
     },
     "optimizer":{
         "class":"Adam",
-        "learning_rate":"1e-3",
+        "learning_rate":"1e-4",
         "decay":"Default",
         "momentum":"Default"
     },
