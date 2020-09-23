@@ -82,6 +82,8 @@ def _dict_to_patches(patch_list, prediction_path):
         print(f"Writing {item_save_path}", end="\r",flush=True)
         write_nifti(item_save_path, patch)
         
+print(f"\n\nPytorch version {torch.__version__}\n\n")
+
 # Initialize cuda
 torch.cuda.init()
 torch.cuda.set_device(0)
