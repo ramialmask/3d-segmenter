@@ -24,15 +24,14 @@
     },
     "dataloader":{
         "num_channels":"1",
-        "batch_size":"4",
+        "batch_size":"16",
         "shuffle":"True",
         "num_workers":"0",
         "block_size":"100",
         "drop_last":"False",
         "div_size":"-1"
     },
-    "network":"leanclassification2d",
-    "task":"classification",
+    "network":"Unet2D",
     "prediction":{
         "threshold":0.5,
         "sigmoid":"True",

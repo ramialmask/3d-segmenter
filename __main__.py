@@ -20,15 +20,25 @@ from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLo
 from loaders import *
 from util import *
 from dataset.training_dataset import TrainingDataset
+from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
 from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
 
-def _criterion():
-    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)
+
+def _criterion(settings):
+    """TODO Either all json entries must include torch.nn or every torch.nn loss gets imported directly
+    """
+    criterion_class = settings["training"]["loss"]["class"]
+    if criterion_class == "WeightedBinaryCrossEntropyLoss":
+        class_frequency = settings["training"]["loss"]["class_frequency"] == "True"
+        criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
+    else:
+        criterion = globals()[criterion_class]()
     return criterion
 
-def _net():
-    net = Unet2D()
+def _net(settings):
+    net_class   = settings["network"]
+    net         = globals()[net_class]()
     return net
 
 def _optimizer(settings, net):
@@ -88,16 +98,18 @@ def crossvalidation(settings):
 def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     """Trains a single model for a given test and train_val fold
     """
-    net             = _net()
-    criterion       = _criterion()
+    net             = _net(settings)
+    criterion       = _criterion(settings)
     optimizer       = _optimizer(settings, net)
     scheduler       = _scheduler(settings, optimizer)
 
 
     settings["training"]["crossvalidation"]["training_set"] = train_val_list[0]
     settings["training"]["crossvalidation"]["validation_set"] = train_val_list[1]
-    settings["training"]["loss"]["class"] = criterion.__class__.__name__
-    settings["network"] = net.__class__.__name__
+    # settings["training"]["loss"]["class"] = criterion.__class__.__name__
+    # settings["network"] = net.__class__.__name__
+    # print(f"\n\n\n{criterion.__class__.__name__}\n\n")
+
 
     print(f"Length Train List:\t{len(train_val_list[0])}\nFirst ten entries:\t{train_val_list[0][:10]}")
     print(f"Length Val List:\t{len(train_val_list[1])}\nFirst ten entries:\t{train_val_list[1][:10]}")
@@ -118,6 +130,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     for epoch in range(epochs):
         net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader)
         validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
+        
         scheduler.step(validation_loss)
 
         metrics = [accuracy, precision, recall, f1_dice]
@@ -137,11 +150,13 @@ def train_epoch(net, optimizer, criterion, dataloader):
 
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
+        weights      = weights.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, weights=weights)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -157,11 +172,13 @@ def validate_epoch(net, criterion, dataloader):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
+        weights      = weights.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, weights=weights)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -220,7 +237,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     min_val_loss = 9000000001
     best_fold = -1
 
-    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','TP','FP','FN','F1 Score'])
 
     for test_fold in test_folds:
         # For each of the models get best validation loss
@@ -238,10 +255,10 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
-        best_model      = _net()
+        best_model      = _net(settings)
         best_model.load_model(best_model_data_path)
         best_model      = best_model.cuda()
-        criterion       = _criterion()
+        criterion       = _criterion(settings)
 
         # Test on the best candidate and save the settings
         test_list       = settings["training"]["crossvalidation"]["test_set"]
@@ -267,30 +284,25 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            for class_list in [[2],[1,2],[2,3],[1,2,3]]:
-                 # class_list = list(range(4-i,4))
-                 gt_path = settings["paths"]["input_gt_path"]
-                 raw_path = settings["paths"]["input_raw_path"]
-                 raw_patch = read_nifti(raw_path + item_name)
-                 target = read_nifti(gt_path + item_name)
+            gt_path = settings["paths"]["input_gt_path"]
+            raw_path = settings["paths"]["input_raw_path"]
+            raw_patch = read_nifti(raw_path + item_name)
+            target = read_nifti(gt_path + item_name)
 
-                 pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
-                 target_classified = classify_patch(target, raw_patch, class_list)
+            tp,fp,fn = get_patch_overlap(reconstructed_prediction, target)
+            dice = tp / (tp + 0.5*(fp + fn))
 
-                 tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
-                 dice = tp / (tp + 0.5*(fp + fn))
+            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                "Validation Fold":[best_val_fold],\
+                                "Patch":          [item_name],\
+                                "TP":           [tp],\
+                                "FP":         [fp],\
+                                "FN":         [fn],\
+                                "F1 Score":         [dice],\
+                                })
+            test_overlap_df = test_overlap_df.append(test_overlap_item)
 
-                 test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                     "Validation Fold":[best_val_fold],\
-                                     "Patch":          [item_name],\
-                                     "Classes":          [class_list],\
-                                     "TP":           [tp],\
-                                     "FP":         [fp],\
-                                     "FN":         [fn],\
-                                     "F1 Score":         [dice],\
-                                     })
-                 test_overlap_df = test_overlap_df.append(test_overlap_item)
-
+    print(f"\nOverlap Test:\n{test_overlap_df}")
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
@@ -310,11 +322,13 @@ def test(net, criterion, dataloader, dataset):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
+        weights      = weights.cuda()
 
         logits       = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, weights)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()

@@ -1,10 +1,12 @@
 {
-    "input_raw_path":   "/home/ramial-maskari/Documents/cFos/input/raw_small/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_mix_v3/",
-    "input_model_path": "/home/ramial-maskari/Documents/cFos/input/models/",
-    "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
-    "writer_path":      "/home/ramial-maskari/runs/",
-    "input_model":"",
-    "output_folder_prefix":"2D Segmentation WBCE MIXED GT",
+    "input_raw_path":   "/media/10TB/Projects/cFos/input/",
+    "input_gt_path":    "/media/10TB/Projects/cFos/segmentation/input/gt/",
+    "input_weigth_path":"/media/10TB/Projects/cFos/segmentation/input/weights/",
+    "input_model_path": "/media/10TB/Projects/cFos/segmentation/input/models/",
+    "output_model_path":"/media/10TB/Projects/cFos/segmentation/output/models/",
+    "output_prediction_path":"/media/10TB/Projects/cFos/segmentation/output/patches/",
+    "writer_path":      "/home/rami/runs/",
+    "input_model":"weighted_2d_unet.dat",
+    "output_folder_prefix":"Weighted2DPrediction",
     "model_name":""
 }
