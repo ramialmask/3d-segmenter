@@ -12,9 +12,8 @@
         "normalization":"True",
         "normalization_type":"global",
         "normalization_values":{
-            "foreground":["0.0","2.0"],
-            "background":["0.0","0.0"],
-            "cutoff":"0.5"
+            "foreground":["14.0","65535.0"],
+            "cutoff":"0.999"
         },
         "transform":{
             "crop":"5,5"

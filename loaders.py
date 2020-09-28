@@ -1,11 +1,12 @@
 import os
 import json
+import numpy as np
 from dataset.training_dataset import TrainingDataset
 from dataset.training_dataset_2D import TrainingDataset2D
 from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
 from dataset.prediction_dataset_2D import PredictionDataset2D
 from torch.utils.data import DataLoader
-import numpy as np
+from functools import partial
 
 def read_meta_dict(path, mode):
     """Load the meta dict / settings dict according to the mode
@@ -80,6 +81,39 @@ def normalize(data):
     data = (data - np.min(data)) / (np.max(data) - np.min(data))
     return data
 
+def normalize_global(data, settings):
+    """Normalization based on global values
+    """
+    min_global = float(settings["preprocessing"]["normalization_values"]["foreground"][0])
+    max_global = float(settings["preprocessing"]["normalization_values"]["foreground"][1])
+    data = (data - min_global) / (max_global - min_global)
+    return data
+
+def normalize_histinfo(data, settings):
+    min_global = float(settings["preprocessing"]["normalization_values"]["foreground"][0])
+    max_global = float(settings["preprocessing"]["normalization_values"]["foreground"][1])
+    cfreq = float(settings["preprocessing"]["normalization_values"]["cutoff"])
+
+    bins = np.arange(min_global, max_global, 10)
+    vals, bins = np.histogram(data, bins, density=True)
+    acc = 0
+    cutoff = np.amax(bins)
+    cfreq *= sum(vals)
+    for i, v in enumerate(vals):
+        acc = acc + v
+        if acc >= cfreq:
+            cutoff = bins[i]
+            break
+    data[data > cutoff] = cutoff
+    return data
+
+
+def get_norm_func(settings):
+    # return normalize
+    # return partial(normalize_global, settings=settings)
+    return partial(normalize_histinfo, settings=settings)
+    # return normalize_histinfo(data, settings=settings)
+
 def get_loader(settings, input_list, testing=False):
     """Retrieve a dataloader for a given input list
     Args:
@@ -87,21 +121,23 @@ def get_loader(settings, input_list, testing=False):
         input_list(list): List of items for the dataset
         testing (bool)  : True if testing, False else
     """
+    norm_func = get_norm_func(settings)
     shuffle = True
     if testing:
         batch_size = 1
         shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = TrainingDataset2DWeighted(settings, input_list, norm=normalize)
+    dataset     = TrainingDataset2DWeighted(settings, input_list, norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
 
 def get_prediction_loader(settings):
+    norm_func = get_norm_func(settings)
     input_list  = os.listdir(settings["paths"]["input_raw_path"])
     print(f"Creating dataset of size {len(input_list)}...")
     batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = PredictionDataset2D(settings, input_list, norm=normalize)     
+    dataset     = PredictionDataset2D(settings, input_list, norm=norm_func)     
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     print("\nDone.")
     return loader, dataset

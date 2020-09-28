@@ -1,5 +1,5 @@
 {
-    "input_raw_path":   "/media/10TB/Projects/cFos/input/",
+    "input_raw_path":   "/media/10TB/Projects/cFos/segmentation/input/raw/",
     "input_gt_path":    "/media/10TB/Projects/cFos/segmentation/input/gt/",
     "input_weigth_path":"/media/10TB/Projects/cFos/segmentation/input/weights/",
     "input_model_path": "/media/10TB/Projects/cFos/segmentation/input/models/",
@@ -7,6 +7,6 @@
     "output_prediction_path":"/media/10TB/Projects/cFos/segmentation/output/patches/",
     "writer_path":      "/home/rami/runs/",
     "input_model":"weighted_2d_unet.dat",
-    "output_folder_prefix":"Weighted2DPrediction",
+    "output_folder_prefix":"Weighted2DHistinfo999",
     "model_name":""
 }
