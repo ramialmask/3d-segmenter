@@ -1,10 +1,10 @@
 {
-    "input_raw_path":   "/home/ramial-maskari/Documents/cFos/input/raw_small/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_v3/",
-    "input_model_path": "/home/ramial-maskari/Documents/cFos/input/models/",
-    "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
+    "input_raw_path":   "/media/ramial-maskari/16TBDrive/UCHL-1/SynGen/nifti_fg-gen/",
+    "input_gt_path":    "/media/ramial-maskari/16TBDrive/UCHL-1/SynGen/mask_fg-gen/",
+    "input_model_path": "/media/ramial-maskari/16TBDrive/UCHL-1/Training/models/",
+    "output_model_path":"/media/ramial-maskari/16TBDrive/UCHL-1/Training/models/",
     "writer_path":      "/home/ramial-maskari/runs/",
     "input_model":"",
-    "output_folder_prefix":"3d Segmentation Overlap classes",
+    "output_folder_prefix":"3d Segmentation Synthetic data",
     "model_name":""
 }

@@ -22,11 +22,52 @@ from blobanalysis import get_patch_overlap
 from dataset.training_dataset import TrainingDataset
 from classify_patches import classify_patch
 
-#TODO
-# CenterlineDiceLoss
+
+# TODO
+# Get test, train list from model path
+
+def get_model(model_path="", test_fold=0, train_fold=0):
+    test_model_path = f"{model_path}{test_fold}/{train_fold}/"
+    model_path = [i for i in os.listdir(test_model_path) if ".dat" in i][0]
+
+    net = _net()
+    net.load_model(test_model_path + model_path)
+    return net
+
+
+def _get_test_val_lists(model_path="", test_fold=0, train_fold=0):
+    import json
+    test_list_path = f"{model_path}{test_fold}/{train_fold}/train.json"
+
+    with open(test_list_path) as file:
+        path_dicts = json.loads(file.read())
+    
+    test_list = path_dicts["crossvalidation"]["test_set"]
+    train_list = path_dicts["crossvalidation"]["training_set"]
+    validation_list = path_dicts["crossvalidation"]["validation_set"]
+    return test_list, train_list, validation_list
+
+def test_list_wrapper(model_path, settings):
+    test_split_amount       = int(settings["training"]["crossvalidation"]["test_folds"])
+    train_val_split_amount  = int(settings["training"]["crossvalidation"]["train_val_folds"])
+    test_lists = []
+    for test_fold in range(test_split_amount):
+        test_list, _, _ = _get_test_val_lists(model_path, test_fold)
+        test_lists.append(test_list)
+    return test_lists
+
+def val_list_wrapper(model_path, test_split, settings):
+    val_split_amount  = int(settings["training"]["crossvalidation"]["train_val_folds"])
+    val_lists = []
+    for val_fold in range(val_split_amount):
+        _, train_list, val_list = _get_test_val_lists(model_path, test_split, val_fold)
+        val_lists.append([train_list, val_list])
+    return val_lists
+ 
+# TODO
 # Remove deprecated parts
 def _criterion():
-    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)#MixedDiceLoss(0.1)#DiceLoss()#
+    criterion = DiceLoss()#WeightedBinaryCrossEntropyLoss(class_frequency=True)#WBCECenterlineLoss(0.1)#MixedDiceLoss(0.1)#DiceLoss()#
     return criterion
 
 def _net():
@@ -51,7 +92,7 @@ def _scheduler(settings, optimizer):
                         verbose=True)
     return scheduler
 
-def crossvalidation(settings):
+def crossvalidation(settings, model_path_old):
     """Splits the input list into a 1/test_split_rate splits containing test and train data
     Trains and validates 1/train_val_split_rate splits for each test split
     Uses the model with the lowest validation loss to test on the given split
@@ -67,30 +108,34 @@ def crossvalidation(settings):
     train_val_split_rate    = float(settings["training"]["crossvalidation"]["train_val_split_rate"])
     train_val_split_amount  = int(settings["training"]["crossvalidation"]["train_val_folds"])
     
-    test_lists = split_list(input_list, test_split_rate, test_split_amount)
+
+    # test_lists = split_list(input_list, test_split_rate, test_split_amount)
+    test_lists = test_list_wrapper(model_path_old, settings)
     
     df = pd.DataFrame(columns=["Test Fold","Validation Fold", "Epoch", "Train Loss", "Validation Loss", "Validation Accuracy", "Validation Precision", "Validation Recall", "Validation Dice"])
 
     df.set_index(["Test Fold","Validation Fold","Epoch"])
+    print(f"Beginning Dataframe: {df}")
     model_name = get_model_name(settings)
 
     for test_fold, test_train_list in enumerate(test_lists):
-        test_list       = test_train_list[1]
+        test_list       = test_train_list
         print(f"Length Test List:\t{len(test_list)}\nFirst ten entries:\t{test_list[:10]}")
-        train_val_lists  = split_list(test_train_list[0], train_val_split_rate, train_val_split_amount)
+        # train_val_lists  = split_list(test_train_list[0], train_val_split_rate, train_val_split_amount)
+        train_val_lists = val_list_wrapper(model_path_old, test_fold, settings)
         settings["training"]["crossvalidation"]["test_set"] = test_list
         for train_val_fold, train_val_list in enumerate(train_val_lists):
-            df = train(settings, train_val_list, test_fold, train_val_fold, model_name, df)
+            df = train(settings, train_val_list, test_fold, train_val_fold, model_name, df, model_path_old)
 
     model_save_dir = os.path.join(settings["paths"]["output_model_path"], model_name)
     df.to_csv(f"{model_save_dir}/training.csv")
 
     test_crossvalidation(settings, df, model_name, model_save_dir)
 
-def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
+def train(settings, train_val_list, test_fold, train_val_fold, model_name, df, model_path_old):
     """Trains a single model for a given test and train_val fold
     """
-    net             = _net()
+    net             =  _net()#get_model(model_path_old, test_fold, train_val_fold)
     criterion       = _criterion()
     optimizer       = _optimizer(settings, net)
     scheduler       = _scheduler(settings, optimizer)
@@ -223,7 +268,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     best_fold = -1
 
     test_patch_df = pd.DataFrame(columns=['patch','axis','class','predicted class','propability'])
-    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','TP','FP','FN','F1 Score'])
+    test_overlap_df = pd.DataFrame(columns=['Test Fold', 'Validation Fold', 'Patch','Classes','TP','FP','FN','F1 Score'])
     
     for test_fold in test_folds:
         # For each of the models get best validation loss
@@ -270,28 +315,34 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             print(f"Writing {item_save_path}")
             write_nifti(item_save_path, reconstructed_prediction)
 
-            gt_path = settings["paths"]["input_gt_path"]
-            target = read_nifti(gt_path + item_name)
+            # for class_list in [[2],[1,2],[2,3],[1,2,3]]:
+            #     # class_list = list(range(3-i,3))
+            #     gt_path = settings["paths"]["input_gt_path"]
+            #     raw_path = settings["paths"]["input_raw_path"]
+            #     raw_patch = read_nifti(raw_path + item_name)
+            #     target = read_nifti(gt_path + item_name)
 
+            #     pred_classified = classify_patch(reconstructed_prediction, raw_patch, class_list)
+            #     target_classified = classify_patch(target, raw_patch, class_list)
 
-            tp,fp,fn = get_patch_overlap(reconstructed_prediction, target)
-            dice = tp / (tp + 0.5*(fp + fn))
+            #     tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
+            #     dice = tp / (tp + 0.5*(fp + fn))
 
-            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                "Validation Fold":[best_val_fold],\
-                                "Patch":          [item_name],\
-                                "TP":           [tp],\
-                                "FP":         [fp],\
-                                "FN":         [fn],\
-                                "F1 Score":         [dice],\
-                                })
-            test_overlap_df = test_overlap_df.append(test_overlap_item)
+            #     test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+            #                         "Validation Fold":[best_val_fold],\
+            #                         "Patch":          [item_name],\
+            #                         "Classes":          [class_list],\
+            #                         "TP":           [tp],\
+            #                         "FP":         [fp],\
+            #                         "FN":         [fn],\
+            #                         "F1 Score":         [dice],\
+            #                         })
+            #     test_overlap_df = test_overlap_df.append(test_overlap_item)
 
 
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_patch_df.to_csv(f"{model_save_dir}/test.csv")
-    # test_overlap_df.iloc["mean"] = test_overlap_df.mean()
-    test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
+    # test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
@@ -381,5 +432,6 @@ torch.cuda.set_device(0)
 # Read the meta dictionary
 settings = read_meta_dict("./","train")
 
+model_path_old = "/media/ramial-maskari/16TBDrive/Synthetic Neuron Creation/segmentation/output/models/Variable GT 3D Neuron Seg DiceLoss leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 40  | 2020-09-11 12:54:53.869806/"
 # Run the program
-crossvalidation(settings)
+crossvalidation(settings, model_path_old)

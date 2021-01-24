@@ -1,4 +1,8 @@
 {
+    "model_name":"_0_1_79.dat",
+    "model_path":"/media/ramial-maskari/16TBDrive/UCHL-1/Training/models/3d Segmentation Synthetic data leanclassification2d Adam factor 0.5 WBCELoss LR=1e-3 Blocksize 100 Epochs 80  | 2021-01-18 10:23:15.353297/0/1/",
+    "output_path":"/media/ramial-maskari/16TBDrive/UCHL-1/pred/",
+    "input_path":"/media/ramial-maskari/16TBDrive/UCHL-1/Syn candidates C03/",
     "sigmoid":"True",
     "binarize":"True",
     "threshold":"0.5",
