@@ -26,7 +26,7 @@ from classify_patches import classify_patch
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = WeightedBinaryCrossEntropyLoss(class_frequency=True)#MixedDiceLoss(0.1)#DiceLoss()#
+    criterion = DiceLoss()#
     return criterion
 
 def _net():
@@ -235,9 +235,10 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                 best_fold = df_fold
 
         print(f"Best fold is {best_fold}")
+        model_name              = settings["paths"]["model_name"]
         best_val_fold           = best_fold["Validation Fold"].iloc[0]
         best_model_path         = os.path.join(model_path, str(test_fold), str(val_fold))
-        best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch}.dat"
+        best_model_data_path    = best_model_path + f"/{model_name}_{test_fold}_{val_fold}_{epoch}.dat"
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")

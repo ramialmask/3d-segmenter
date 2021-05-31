@@ -1,10 +1,12 @@
 {
-    "input_raw_path":   "/home/ramial-maskari/Documents/cFos/input/raw_small/",
-    "input_gt_path":    "/home/ramial-maskari/Documents/cFos/input/gt_v3/",
-    "input_model_path": "/home/ramial-maskari/Documents/cFos/input/models/",
-    "output_model_path":"/home/ramial-maskari/Documents/cFos/output/models/",
-    "writer_path":      "/home/ramial-maskari/runs/",
-    "input_model":"",
-    "output_folder_prefix":"3d Segmentation Overlap classes",
-    "model_name":""
+    "input_raw_path":           "/media/10TB/Projects/alpha-btx/4x segmentation/input/raw_new/",
+    "input_gt_path":            "/media/10TB/Projects/alpha-btx/4x segmentation/input/seg_new/",
+    "input_weigth_path":        "",
+    "input_model_path":         "/media/10TB/Projects/alpha-btx/4x segmentation/input/models/",
+    "output_model_path":        "/media/10TB/Projects/alpha-btx/4x segmentation/output/models/",
+    "output_prediction_path":   "/media/10TB/Projects/alpha-btx/4x segmentation/output/patches/",
+    "writer_path":              "/home/rami/runs/",
+    "input_model":              "",
+    "output_folder_prefix":     "",
+    "model_name":               "Second Test"
 }

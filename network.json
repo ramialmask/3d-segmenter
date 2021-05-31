@@ -31,7 +31,7 @@
         "drop_last":"False",
         "div_size":"-1"
     },
-    "network":"leanclassification2d",
+    "network":"Unet3D",
     "task":"classification",
     "prediction":{
         "threshold":0.5,

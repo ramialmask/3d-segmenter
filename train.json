@@ -4,18 +4,18 @@
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
-        "class":"WBCELoss",
+        "class":"DiceLoss",
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_folds":"2",
+        "test_folds":"1",
         "train_val_folds":"2",
         "test_split_rate":"0.2",
         "train_val_split_rate":"0.2"
     },
     "optimizer":{
         "class":"Adam",
-        "learning_rate":"1e-3",
+        "learning_rate":"1e-4",
         "decay":"Default",
         "momentum":"Default"
     },
