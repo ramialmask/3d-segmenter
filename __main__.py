@@ -30,7 +30,8 @@ def _criterion():
     return criterion
 
 def _net():
-    net = Unet3D()
+    # Make it 2channel
+    net = Unet3D(in_dim=2)
     return net
 
 def _optimizer(settings, net):
@@ -134,6 +135,7 @@ def train_epoch(net, optimizer, criterion, dataloader):
     net.train()
     running_loss = 0.0
     d_len = len(dataloader)
+    #TODO Do transforms here
     for i, item in enumerate(dataloader):
         optimizer.zero_grad()
 
@@ -282,7 +284,8 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                 target_classified = classify_patch(target, raw_patch, class_list)
 
                 tp,fp,fn = get_patch_overlap(pred_classified, target_classified)
-                dice = tp / (tp + 0.5*(fp + fn))
+                epsilon = 0.0000000000001
+                dice = tp / (epsilon+ tp + 0.5*(fp + fn))
 
                 test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
                                     "Validation Fold":[best_val_fold],\

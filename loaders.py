@@ -1,8 +1,10 @@
 import os
 import json
 from dataset.training_dataset import TrainingDataset
+from dataset.training_dataset_2ch import TrainingDataset2channel
 from torch.utils.data import DataLoader
 import numpy as np
+import functools
 
 def read_meta_dict(path, mode):
     """Load the meta dict / settings dict according to the mode
@@ -71,8 +73,20 @@ def write_meta_dict(path, settings, mode="train"):
             _temp["postprocessing"] = settings["postprocessing"]
             json.dump(_temp, file, indent=2)
 
-def normalize(data):
-    return (data - np.min(data)) / np.max(data)
+def normalize(data, threshold=0):
+    result = (data - np.min(data)) / np.max(data)
+    result[result < np.max(data)*threshold] = 0
+    return result
+
+def global_normalize(settings, data, foreground=True):
+    #functools partial
+    if foreground:
+        vals = settings["preprocessing"]["normalization_values"]["foreground"]
+        min_, max_ = float(vals[0]), float(vals[1])
+    else:
+        vals = settings["preprocessing"]["normalization_values"]["background"]
+        min_, max_ = float(vals[0]), float(vals[1])
+    return (data - min_) / max_
 
 def get_loader(settings, input_list, testing=False):
     """Retrieve a dataloader for a given input list
@@ -87,6 +101,8 @@ def get_loader(settings, input_list, testing=False):
         shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = TrainingDataset(settings, input_list, norm=normalize)
+    normalization_func = normalize
+    # normalization_func = functools.partial(global_normalize, settings)
+    dataset     = TrainingDataset2channel(settings, input_list, norm=normalization_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset

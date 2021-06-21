@@ -1,5 +1,6 @@
 {
     "input_raw_path":           "/media/10TB/Projects/alpha-btx/4x segmentation/input/raw_new/",
+    "input_bg_path":            "/media/10TB/Projects/alpha-btx/4x segmentation/input/bg_new/",
     "input_gt_path":            "/media/10TB/Projects/alpha-btx/4x segmentation/input/seg_new/",
     "input_weigth_path":        "",
     "input_model_path":         "/media/10TB/Projects/alpha-btx/4x segmentation/input/models/",
@@ -7,6 +8,6 @@
     "output_prediction_path":   "/media/10TB/Projects/alpha-btx/4x segmentation/output/patches/",
     "writer_path":              "/home/rami/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "",
-    "model_name":               "Second Test"
+    "output_folder_prefix":     "New segmentation Multichannel PatchNormalization DiceLoss Augmentation",
+    "model_name":               "New segmentation Multichannel PatchNormalization DiceLoss Augmentation"
 }

@@ -3,8 +3,10 @@ import os
 import torch
 import numpy as np
 import nibabel as nib
+import random
 
 from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms as TF
 """
 - Load all datasets into one huge list
 - iterate over this list as method of getitem
@@ -65,47 +67,57 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
 
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
 
-class TrainingDataset(Dataset):
+class TrainingDataset2channel(Dataset):
     #TODO Needs transformation, rotation, splits?
     def __init__(self, settings, split, transform=None, norm=None):
         self.settings = settings
 
         # Get paths
         nii_path = settings["paths"]["input_raw_path"]
+        bg_path = settings["paths"]["input_bg_path"]
         gt_path = settings["paths"]["input_gt_path"]
 
         # create list
         nii_list = []
+        bg_list = []
         gt_list = []
 
         mb_size = int(self.settings["dataloader"]["block_size"])
         self.vdivs = -1
         name_list = []
         
+        # self.gaussian = TF.GaussianBlur(4)
 
         # Load data
         for item in split:
             item_nii_path   = os.path.join(nii_path, item)
+            item_bg_path    = os.path.join(bg_path, item)
             item_gt_path    = os.path.join(gt_path, item)
 
             #TODO concat with bg along 2nd axis
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
+            image_bg    = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
             image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
 
             self.original_shape = image.shape
             self.original_type = image.dtype
             image = image.astype(np.int64)
+            image_bg= image.astype(np.int64)
 
             if transform:
                 image       = transform(image)
+                image_bg    = transform(image_bg)
                 image_gt    = transform(image_gt)
 
             if norm:
-                image       = norm(image)
-                # image_gt    = norm(image_gt)
+                # image       = norm(image, foreground=True)
+                # image_bg    = norm(image_bg, foreground=False)
+                image = norm(image)
+                image_bg = norm(image_bg)
+                image_gt[image_gt > 0]  = 1# norm(image_gt)
             
-
+            #TODO Add bg here as well
             if image.shape[0] > mb_size:
                 # Torchify
                 image = torch.tensor(image).float()
@@ -117,7 +129,7 @@ class TrainingDataset(Dataset):
                 offset_volume = (offset_value, offset_value, offset_value)
                 offset_segmentation = (0,0,0)
 
-                image_list = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                image_list = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume)]#.unsqueeze(1)]
                 image_gt_list  = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
 
                 nii_list = nii_list + image_list
@@ -126,13 +138,29 @@ class TrainingDataset(Dataset):
             else:
                 # Pad
                 padding_value = int(self.settings["preprocessing"]["padding"])
-
                 image = np.pad(image, padding_value, "reflect")
+                image_bg = np.pad(image_bg, padding_value, "reflect")
 
+                image   = np.expand_dims(image, 0)
+                image_bg= np.expand_dims(image_bg, 0)
+                image_gt= np.expand_dims(image_gt, 0)
+                image = np.concatenate((image, image_bg), axis= 0)
+
+                # import matplotlib.pyplot as plt
+                # fig, ax = plt.subplots(1,2)
+                # # print(image.shape)
+                # # print(image_gt.shape)
+                # # exit()
+                # ax[0].imshow(np.amax(np.squeeze(image[0,:,:,:]),-1))
+                # ax[1].imshow(np.amax(image_gt,-1))
+                # plt.title(item)
+                # plt.show()
+                # exit()
+            
                 # Torchify
                 image = torch.tensor(image).float()
                 image_gt = torch.tensor(image_gt).float()
-                nii_list.append(image.unsqueeze(0))
+                nii_list.append(image)#.unsqueeze(0))
                 gt_list.append(image_gt.unsqueeze(0))
                 name_list.append(item)
 
@@ -141,11 +169,35 @@ class TrainingDataset(Dataset):
     def original_information(self):
         return self.original_shape, self.original_type, self.vdivs
 
+    def transform(self, volume, segmentation):
+        # Volume and segmentation
+        # Random horizontal flip
+        if random.random() > 0.5:
+            volume          = TF.functional.hflip(volume)
+            segmentation    = TF.functional.hflip(segmentation)
+        # Random vertical flip
+        if random.random() > 0.5:
+            volume          = TF.functional.vflip(volume)
+            segmentation    = TF.functional.vflip(segmentation)
+
+        # Only volume
+        # Random gaussian blur
+        # if random.random() > 0.9:
+        #     volume = self.gaussian(volume)
+
+        return volume, segmentation
+
     def __len__(self):
         return len(self.item_list[0])
 
     def __getitem__(self, idx):
-        return {"volume":self.item_list[0][idx], "segmentation":self.item_list[1][idx], "name":self.item_list[2][idx]}
+        volume          = self.item_list[0][idx]
+        segmentation    = self.item_list[1][idx]
+        name            = self.item_list[2][idx]
+
+        volume, segmentation = self.transform(volume, segmentation)
+
+        return {"volume":volume, "segmentation":segmentation, "name":name}
 
 
 

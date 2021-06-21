@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"80",
+    "epochs":"100",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
@@ -8,8 +8,8 @@
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_folds":"1",
-        "train_val_folds":"2",
+        "test_folds":"2",
+        "train_val_folds":"4",
         "test_split_rate":"0.2",
         "train_val_split_rate":"0.2"
     },
