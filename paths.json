@@ -1,13 +1,14 @@
 {
-    "input_raw_path":           "/media/10TB/Projects/alpha-btx/4x segmentation/input/raw_new/",
-    "input_bg_path":            "/media/10TB/Projects/alpha-btx/4x segmentation/input/bg_new/",
-    "input_gt_path":            "/media/10TB/Projects/alpha-btx/4x segmentation/input/seg_new/",
+    "input_raw_path":           "/media/16TB/HFD UCHL-1/HFD/input/raw/",
+    "input_bg_path":            "/media/16TB/HFD UCHL-1/HFD/input/bg/",
+    "input_gt_path":            "/media/16TB/HFD UCHL-1/HFD/input/gt/",
+    "input_gt_center_path":     "/media/16TB/HFD UCHL-1/HFD/input/skel/",
     "input_weigth_path":        "",
-    "input_model_path":         "/media/10TB/Projects/alpha-btx/4x segmentation/input/models/",
-    "output_model_path":        "/media/10TB/Projects/alpha-btx/4x segmentation/output/models/",
-    "output_prediction_path":   "/media/10TB/Projects/alpha-btx/4x segmentation/output/patches/",
+    "input_model_path":         "/media/16TB/HFD UCHL-1/HFD/input/models/",
+    "output_model_path":        "/media/16TB/HFD UCHL-1/HFD/output/models/",
+    "output_prediction_path":   "/media/16TB/HFD UCHL-1/HFD/output/patches/",
     "writer_path":              "/home/rami/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "New segmentation Multichannel PatchNormalization DiceLoss Augmentation",
-    "model_name":               "New segmentation Multichannel PatchNormalization DiceLoss Augmentation"
+    "output_folder_prefix":     "Centerline Dice Augmentation",
+    "model_name":               "Centerline Dice Augmentation"
 }

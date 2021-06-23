@@ -66,76 +66,93 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
 
 class TrainingCenterlineDataset(Dataset):
-    #TODO Needs transformation, rotation, splits?
+    #TODO Concat background and foreground
     def __init__(self, settings, split, transform=None, norm=None):
         self.settings = settings
 
         # Get paths
-        nii_path = settings["paths"]["input_raw_path"]
-        gt_path = settings["paths"]["input_gt_path"]
-        center_Path = settings["paths"]["input_gt_center_path"]
+        nii_path    = settings["paths"]["input_raw_path"]
+        bg_path     = settings["paths"]["input_bg_path"]
+        gt_path     = settings["paths"]["input_gt_path"]
+        center_path = settings["paths"]["input_gt_center_path"]
 
         # create list
-        nii_list = []
-        gt_list = []
+        nii_list    = []
+        bg_list     = []
+        gt_list     = []
         center_list = []
 
-        mb_size = int(self.settings["dataloader"]["block_size"])
-        name_list = []
+        mb_size     = int(self.settings["dataloader"]["block_size"])
+        name_list   = []
         
         # TODO Add centerline stuff
         # Load data
         for item in split:
-            item_nii_path   = os.path.join(nii_path, item)
-            item_gt_path    = os.path.join(gt_path, item)
+            item_nii_path       = os.path.join(nii_path, item)
+            item_bg_path        = os.path.join(bg_path, item)
+            item_center_path    = os.path.join(center_path, item)
+            item_gt_path        = os.path.join(gt_path, item)
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
+            image_bg    = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
+            image_center= np.swapaxes(nib.load(item_center_path).dataobj, 0, 1)
             image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
 
             self.original_shape = image.shape
             self.original_type = image.dtype
             image = image.astype(np.int64)
 
-            if transform:
-                image       = transform(image)
-                image_gt    = transform(image_gt)
-
             if norm:
                 image       = norm(image)
+                image_bg    = norm(image_bg)
                 # image_gt    = norm(image_gt)
             
 
             if image.shape[0] > mb_size:
                 # Torchify
-                image = torch.tensor(image).float()
-                image_gt = torch.tensor(image_gt).float()
+                image           = torch.tensor(image).float()
+                image_bg        = torch.tensor(image_bg).float()
+                image_center    = torch.tensor(image_center).float()
+                image_gt        = torch.tensor(image_gt).float()
 
-                vdivs = find_divs(self.settings, image)
-                self.vdivs = vdivs
-                offset_value = int(self.settings["preprocessing"]["padding"])
-                offset_volume = (offset_value, offset_value, offset_value)
+                vdivs               = find_divs(self.settings, image)
+                self.vdivs          = vdivs
+                offset_value        = int(self.settings["preprocessing"]["padding"])
+                offset_volume       = (offset_value, offset_value, offset_value)
                 offset_segmentation = (0,0,0)
 
-                image_list = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume).unsqueeze(1)]
-                image_gt_list  = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
+                image_list          = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                image_bg_list       = [x for x in get_patch_data3d(image_bg, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                image_center_list   = [x for x in get_patch_data3d(image_center, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                image_gt_list       = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
 
-                nii_list = nii_list + image_list
-                gt_list = gt_list + image_gt_list
-                name_list = name_list + [item for i in range(len(image_list))]
+                nii_list            = nii_list + image_list
+                bg_list             = bg_list + image_bg_list
+                center_list         = center_list + image_center_list
+                gt_list             = gt_list + image_gt_list
+                name_list           = name_list + [item for i in range(len(image_list))]
             else:
                 # Pad
                 padding_value = int(self.settings["preprocessing"]["padding"])
 
-                image = np.pad(image, padding_value, "reflect")
+                image           = np.pad(image, padding_value, "reflect")
+                image_bg        = np.pad(image_bg, padding_value, "reflect")
+                image_center    = np.pad(image_center, padding_value, "reflect")
 
                 # Torchify
-                image = torch.tensor(image).float()
-                image_gt = torch.tensor(image_gt).float()
+                image           = torch.tensor(image).float()
+                image_bg        = torch.tensor(image_bg).float()
+                image_center    = torch.tensor(image_center).float()
+                image_gt        = torch.tensor(image_gt).float()
+
                 nii_list.append(image.unsqueeze(0))
+                bg_list.append(image_bg.unsqueeze(0))
+                center_list.append(image_center.unsqueeze(0))
                 gt_list.append(image_gt.unsqueeze(0))
+
                 name_list.append(item)
 
-        self.item_list = [nii_list, gt_list, name_list]
+        self.item_list = [nii_list, bg_list, center_list, gt_list, name_list]
 
     def original_information(self):
         return self.original_shape, self.original_type, self.vdivs
@@ -143,8 +160,42 @@ class TrainingCenterlineDataset(Dataset):
     def __len__(self):
         return len(self.item_list[0])
 
-    def __getitem__(self, idx):
-        return {"volume":self.item_list[0][idx], "segmentation":self.item_list[1][idx], "name":self.item_list[2][idx]}
+    def transform(self, volume, background, centerline, segmentation):
+        # Volume and segmentation
+        # Random horizontal flip
+        if random.random() > 0.5:
+            volume          = TF.functional.hflip(volume)
+            background      = TF.functional.hflip(background)
+            centerline      = TF.functional.hflip(centerline)
+            segmentation    = TF.functional.hflip(segmentation)
+        # Random vertical flip
+        if random.random() > 0.5:
+            volume          = TF.functional.vflip(volume)
+            background      = TF.functional.vflip(background)
+            centerline      = TF.functional.vflip(centerline)
+            segmentation    = TF.functional.vflip(segmentation)
 
+        # Only volume
+        # Random gaussian blur
+        # if random.random() > 0.9:
+        #     volume = self.gaussian(volume)
+
+        return volume, background, centerline, segmentation
+
+    def __getitem__(self, idx):
+        volume          = self.item_list[0][idx]
+        background      = self.item_list[1][idx]
+        centerline      = self.item_list[2][idx]
+        segmentation    = self.item_list[3][idx]
+        name            = self.item_list[4][idx]
+
+        result  = {}
+        result["volume"]        = volume
+        result["background"]    = background
+        result["centerline"]    = centerline
+        result["segmentation"]  = segmentation
+        result["name"]          = name
+
+        return result
 
 

@@ -1,6 +1,7 @@
 import os
 import json
 from dataset.training_dataset import TrainingDataset
+from dataset.training_centerline_dataset import TrainingCenterlineDataset
 from dataset.training_dataset_2ch import TrainingDataset2channel
 from torch.utils.data import DataLoader
 import numpy as np
@@ -103,6 +104,6 @@ def get_loader(settings, input_list, testing=False):
         batch_size  = int(settings["dataloader"]["batch_size"])
     normalization_func = normalize
     # normalization_func = functools.partial(global_normalize, settings)
-    dataset     = TrainingDataset2channel(settings, input_list, norm=normalization_func)
+    dataset     = TrainingCenterlineDataset(settings, input_list, norm=normalization_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset

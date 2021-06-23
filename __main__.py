@@ -26,7 +26,7 @@ from classify_patches import classify_patch
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = DiceLoss()#
+    criterion = CenterlineDiceLoss()#
     return criterion
 
 def _net():
@@ -140,12 +140,15 @@ def train_epoch(net, optimizer, criterion, dataloader):
         optimizer.zero_grad()
 
         volume       = item["volume"]
+        centerline   = item["centerline"]
         segmentation = item["segmentation"]
+
         volume       = volume.cuda()
+        centerline   = centerline.cuda()
         segmentation = segmentation.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, centerline)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -160,12 +163,15 @@ def validate_epoch(net, criterion, dataloader):
     result_list = [0, 0, 0, 0]
     for item in dataloader:
         volume       = item["volume"]
+        centerline   = item["centerline"]
         segmentation = item["segmentation"]
+
         volume       = volume.cuda()
+        centerline   = centerline.cuda()
         segmentation = segmentation.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, centerline)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -323,12 +329,15 @@ def test(net, criterion, dataloader, dataset):
 
     for item in dataloader:
         volume       = item["volume"]
+        centerline   = item["centerline"]
         segmentation = item["segmentation"]
+
         volume       = volume.cuda()
+        centerline   = centerline.cuda()
         segmentation = segmentation.cuda()
 
         logits       = net(volume)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, centerline)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
