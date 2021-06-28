@@ -26,12 +26,13 @@ from classify_patches import classify_patch
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = CenterlineDiceLoss()#
+    # criterion = CenterlineDiceLoss()#
+    criterion = WBCECenterlineLoss(0.2)#
     return criterion
 
 def _net():
     # Make it 2channel
-    net = Unet3D(in_dim=2)
+    net = Unet3D()
     return net
 
 def _optimizer(settings, net):
