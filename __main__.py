@@ -26,7 +26,7 @@ from classify_patches import classify_patch
 # CenterlineDiceLoss
 # Remove deprecated parts
 def _criterion():
-    criterion = DiceLoss()#
+    criterion = WeightedBinaryCrossEntropyLoss()#
     return criterion
 
 def _net():
