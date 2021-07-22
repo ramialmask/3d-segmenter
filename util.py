@@ -72,12 +72,26 @@ def reconstruct_patches(item_dict,dataset):
 
 def reconstruct_patches_2d(item_dict, dataset):
     original_shape, original_type = dataset.original_information()
+    
     result_list = []
     for item_name in item_dict.keys():
         # print(f"Reconstructing {item_name}")
+        
         pred = item_dict[item_name]
         sorted_pred = sorted(pred, key=lambda x: x[0])
-        reconstructed_prediction = np.array([x[1] for x in sorted_pred]).astype(original_type)
+
+        
+        dx, dy = 0, 0
+        if sorted_pred[0][1].shape[0] > original_shape[0]:
+            dim_diff_x = sorted_pred[0][1].shape[0] - original_shape[0]
+            dim_diff_y = sorted_pred[1][1].shape[1] - original_shape[1]
+            dx = int(dim_diff_x/2)
+            dy = int(dim_diff_y/2)
+                
+        if dx > 0:
+            reconstructed_prediction = np.array([x[1][dx:-dx,dy:-dy] for x in sorted_pred]).astype(original_type)
+        else:   
+            reconstructed_prediction = np.array([x[1] for x in sorted_pred]).astype(original_type)
         reconstructed_prediction = np.swapaxes(reconstructed_prediction, 1, 2)
         reconstructed_prediction = np.transpose(reconstructed_prediction)
 

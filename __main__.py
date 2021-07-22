@@ -150,13 +150,14 @@ def train_epoch(net, optimizer, criterion, dataloader):
 
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        weights      = item["weights"]
+        # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        weights      = weights.cuda()
+        # weights      = weights.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation, weights=weights)
+        # loss        = criterion(logits, segmentation, weights=weights)
+        loss        = criterion(logits, segmentation)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -172,13 +173,14 @@ def validate_epoch(net, criterion, dataloader):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        weights      = item["weights"]
+        # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        weights      = weights.cuda()
+        # weights      = weights.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation, weights=weights)
+        # loss        = criterion(logits, segmentation, weights=weights)
+        loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -250,8 +252,9 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
 
         print(f"Best fold is {best_fold}")
         best_val_fold           = best_fold["Validation Fold"].iloc[0]
+        best_model_name         = settings["paths"]["model_name"]
         best_model_path         = os.path.join(model_path, str(test_fold), str(val_fold))
-        best_model_data_path    = best_model_path + f"/_{test_fold}_{val_fold}_{epoch}.dat"
+        best_model_data_path    = best_model_path + f"/{best_model_name}_{test_fold}_{val_fold}_{epoch}.dat"
         
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
@@ -322,13 +325,14 @@ def test(net, criterion, dataloader, dataset):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        weights      = item["weights"]
+        # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        weights      = weights.cuda()
+        # weights      = weights.cuda()
 
         logits       = net(volume)
-        loss        = criterion(logits, segmentation, weights)
+        # loss        = criterion(logits, segmentation, weights)
+        loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -336,8 +340,9 @@ def test(net, criterion, dataloader, dataset):
         res[res <= 0.5] = 0.0
 
         item_name = item["name"][0]
-        item_z = item_name.split("$")[0]
+        item_z = int(item_name.split("$")[0])
         item_image = item_name.split("$")[1]
+        
 
         if item_image in item_dict.keys():
             item_dict[item_image].append((item_z, res.squeeze().squeeze()))
