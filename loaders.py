@@ -3,6 +3,7 @@ import json
 from dataset.training_dataset import TrainingDataset
 from dataset.training_centerline_dataset import TrainingCenterlineDataset
 from dataset.training_dataset_2ch import TrainingDataset2channel
+from dataset.prediction_dataset import PredictionDataset
 from torch.utils.data import DataLoader
 import numpy as np
 import functools
@@ -37,7 +38,6 @@ def read_meta_dict(path, mode):
             settings["preprocessing"] = _temp["preprocessing"]
             settings["dataloader"] = _temp["dataloader"]
             settings["network"] =  _temp["network"]
-            settings["prediction"] = _temp["prediction"]
             settings["postprocessing"] =  _temp["postprocessing"]
 
     return settings
@@ -70,7 +70,6 @@ def write_meta_dict(path, settings, mode="train"):
             _temp["preprocessing"]  = settings["preprocessing"]
             _temp["dataloader"]     = settings["dataloader"]
             _temp["network"]        = settings["network"]
-            _temp["prediction"]     = settings["prediction"]
             _temp["postprocessing"] = settings["postprocessing"]
             json.dump(_temp, file, indent=2)
 
@@ -89,7 +88,7 @@ def global_normalize(settings, data, foreground=True):
         min_, max_ = float(vals[0]), float(vals[1])
     return (data - min_) / max_
 
-def get_loader(settings, input_list, testing=False):
+def get_loader(settings, input_list, mode=0):
     """Retrieve a dataloader for a given input list
     Args:
         settings (dict) : The meta dictionary
@@ -97,13 +96,21 @@ def get_loader(settings, input_list, testing=False):
         testing (bool)  : True if testing, False else
     """
     shuffle = True
-    if testing:
+    # normalization_func = normalize
+    normalization_func = functools.partial(global_normalize, settings)
+    if mode == 1:
         batch_size = 1
         shuffle = False
-    else:
+        dataset     = TrainingCenterlineDataset(settings, input_list, norm=normalization_func)
+        loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    elif mode == 0:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    normalization_func = normalize
-    # normalization_func = functools.partial(global_normalize, settings)
-    dataset     = TrainingCenterlineDataset(settings, input_list, norm=normalization_func)
-    loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        dataset     = TrainingCenterlineDataset(settings, input_list, norm=normalization_func)
+        loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    elif mode == 2:
+        batch_size = 1
+        shuffle = False
+        dataset     = PredictionDataset(settings, input_list, norm=normalization_func)
+        loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
     return loader, dataset

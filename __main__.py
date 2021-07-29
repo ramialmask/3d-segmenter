@@ -258,7 +258,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
 
         # Test on the best candidate and save the settings
         test_list       = settings["training"]["crossvalidation"]["test_set"]
-        test_loader, test_dataset     = get_loader(settings, test_list, True)
+        test_loader, test_dataset     = get_loader(settings, test_list, mode=1)
 
         test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
         print(f"Test scores")

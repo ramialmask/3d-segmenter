@@ -1,4 +1,8 @@
 {
+    "input_patch_path":"/media/16TB/HFD UCHL-1/HFD patches/",
+    "input_model_path":"/media/16TB/HFD UCHL-1/HFD/input/models/",
+    "input_model_name":"WBCE 0.2 Centerline Dice Unet3D Augmentation Global normalization_0_0_99.dat",
+    "output_patch_path": "/media/16TB/HFD UCHL-1/HFD seg/",
     "sigmoid":"True",
     "binarize":"True",
     "threshold":"0.5",
