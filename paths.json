@@ -1,12 +1,12 @@
 {
-    "input_raw_path":   "/media/10TB/Projects/cFos/segmentation/input/raw/",
-    "input_gt_path":    "/media/10TB/Projects/cFos/segmentation/input/gt/",
-    "input_weigth_path":"/media/10TB/Projects/cFos/segmentation/input/weights/",
-    "input_model_path": "/media/10TB/Projects/cFos/segmentation/input/models/",
-    "output_model_path":"/media/10TB/Projects/cFos/segmentation/output/models/",
-    "output_prediction_path":"/media/10TB/Projects/cFos/segmentation/output/patches/",
-    "writer_path":      "/home/rami/runs/",
-    "input_model":"weighted_2d_unet.dat",
-    "output_folder_prefix":"Weighted2DHistinfo999",
-    "model_name":""
+    "input_raw_path":           "/media/10TB/Projects/Biontech/segmentation/input/raw_new/",
+    "input_gt_path":            "/media/10TB/Projects/Biontech/segmentation/input/gt_new/",
+    "input_weigth_path":        "/media/10TB/Projects/Biontech/segmentation/input/weights/",
+    "input_model_path":         "/media/10TB/Projects/Biontech/segmentation/input/models/",
+    "output_model_path":        "/media/10TB/Projects/Biontech/segmentation/output/models/",
+    "output_prediction_path":   "/media/10TB/Projects/Biontech/segmentation/output/patches/",
+    "writer_path":              "/home/rami/runs/",
+    "input_model":              "",
+    "output_folder_prefix":     "BioNTech small patches 2D U-Net WBCE Augmentation no CF",
+    "model_name":               "BioNTech small patches 2D U-Net WBCE Augmentation no CF"
 }

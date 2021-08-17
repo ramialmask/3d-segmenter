@@ -19,6 +19,7 @@
             "crop":"5,5"
         },
         "padding":"2",
+        "gt_padding":"0",
         "padding_type":"circular"
     },
     "dataloader":{

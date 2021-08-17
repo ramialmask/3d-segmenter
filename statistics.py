@@ -41,4 +41,22 @@ def calc_metrices_stats(m_list):
     vs = 1 - abs(fn - fp) / (2*tp + fp + fn)
     accuracy = (tp + tn) / (tp + fp + tn + fn)
     f1_dice = (2*tp) / (2*tp + fp +fn)
+    if tp == 0 and tn == 0 and fp == 0 and fn == 0:
+        f1_dice = 1
     return precision, recall, vs, accuracy, f1_dice
+
+def create_overlay(pred, target):
+    target[target > 1] = 1 
+    pred[pred > 1] = 1 
+
+    res = target*2 + pred
+    res[res==2] = 10
+    res[res==3] = 2 
+    res[res==10]= 3
+    return res
+
+def create_f1_overlay(pred, target):
+    #TODO
+    # Use blobanalysis to get patch ids and corresponding connected component
+    # Mark missed blobs/correrctly identified blobs etc
+    pass

@@ -13,14 +13,12 @@ from PIL import Image
 from models.unet_3d_oliver import Unet3D
 from models.unet_2d import Unet2D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
-from statistics import calc_statistics, calc_metrices_stats
+from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
 from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loaders import *
 from util import *
-from dataset.training_dataset import TrainingDataset
-from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
 from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
 
@@ -281,19 +279,34 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                             })
         test_df = test_df.append(test_item)
 
+        # Make patch folder to keep all patches in a single directory
+        if not os.path.exists(f"{model_save_dir}/patches/"):
+            os.mkdir(f"{model_save_dir}/patches/")
+        
+        if not os.path.exists(f"{model_save_dir}/patches/{test_fold}/"):
+            os.mkdir(f"{model_save_dir}/patches/{test_fold}/")
+ 
 
         for item_name, reconstructed_prediction in reconstructed_patches:
-            item_save_path = f"{model_save_dir}/{test_fold}/{item_name}"
+            item_save_path      = f"{model_save_dir}/patches/{test_fold}/{item_name}"
+            overlay_save_path   = f"{model_save_dir}/patches/{test_fold}/overlay_{item_name}"
+
             print(f"Writing {item_save_path}")
-            write_nifti(item_save_path, reconstructed_prediction)
+            write_nifti(item_save_path, reconstructed_prediction)            
 
             gt_path = settings["paths"]["input_gt_path"]
             raw_path = settings["paths"]["input_raw_path"]
             raw_patch = read_nifti(raw_path + item_name)
             target = read_nifti(gt_path + item_name)
 
+            overlay = create_overlay(reconstructed_prediction, target)
+            write_nifti(overlay_save_path, overlay)
+
             tp,fp,fn = get_patch_overlap(reconstructed_prediction, target)
-            dice = tp / (tp + 0.5*(fp + fn))
+            
+            dice = tp / (0.00001 + tp + 0.5*(fp + fn))
+            if tp == 0 and fp == 0 and fn == 0:
+                dice = 1
 
             test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
                                 "Validation Fold":[best_val_fold],\
@@ -305,6 +318,8 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                                 })
             test_overlap_df = test_overlap_df.append(test_overlap_item)
 
+    test_df.loc['mean'] = test_df.mean()
+    test_overlap_df.loc['mean'] = test_overlap_df.mean()
     print(f"\nOverlap Test:\n{test_overlap_df}")
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")

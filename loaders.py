@@ -111,7 +111,8 @@ def normalize_histinfo(data, settings):
 def get_norm_func(settings):
     # return normalize
     # return partial(normalize_global, settings=settings)
-    return partial(normalize_histinfo, settings=settings)
+    # return partial(normalize_histinfo, settings=settings)
+    return normalize
     # return normalize_histinfo(data, settings=settings)
 
 def get_loader(settings, input_list, testing=False):
@@ -128,7 +129,8 @@ def get_loader(settings, input_list, testing=False):
         shuffle = False
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = TrainingDataset2DWeighted(settings, input_list, norm=norm_func)
+    # dataset     = TrainingDataset2DWeighted(settings, input_list, norm=norm_func)
+    dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
 
