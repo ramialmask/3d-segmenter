@@ -5,83 +5,70 @@ import numpy as np
 from models.unet_2d import Unet2D
 from loaders import read_meta_dict, get_prediction_loader
 from util import *
+from loaders import get_loader
 
 
 def _net(settings):
     net_class       = settings["network"]
     model_path      = settings["paths"]["input_model_path"] + settings["paths"]["input_model"]
+    print(f"Loading model {model_path}")
     net             = globals()[net_class]()
     net.load_model(model_path)
     net             = net.cuda()
     return net
 
-def predict(net, dataloader, dataset, batchsize):
-    net.eval()
-    item_dict = {}
-    d_len = len(dataloader)
-    c = 0
-    print(f"Predicting {d_len} items...")
-
-    for item in dataloader:
-        c += 1
-        print(f"Predicting item {c} of {d_len}...",end="\r",flush=True)
-        volume  = item["volume"]
-        volume  = volume.cuda()
-        logits  = net(volume)
-        res     = logits.detach().cpu().numpy()
-
-        res[res > 0.5]  = 1.0
-        res[res <=0.5]  = 0.0
-        
-        for batch in range(batchsize):
-            item_name   = item["name"][batch]
-            item_z      = item_name.split("$")[0]
-            item_image  = item_name.split("$")[1]
-
-            if item_image in item_dict.keys():
-                item_dict[item_image].append((item_z, res[batch].squeeze()))
-            else:
-                item_dict[item_image] = [(item_z, res[batch].squeeze())]
-
-    reconstructed_patches = reconstruct_patches_2d(item_dict, dataset)
-    print("\nPrediction finished.")
-    return reconstructed_patches
 
 def prediction(settings):
     net = _net(settings)
-    dataloader, dataset = get_prediction_loader(settings)
+    input_list = os.listdir(settings["paths"]["input_raw_path"])
+    dataloader, dataset = get_loader(settings,input_list,False,True)
     batchsize  = int(settings["dataloader"]["batch_size"])
-    reconstructed_patches = predict(net, dataloader, dataset, batchsize)
 
     prediction_path = settings["paths"]["output_prediction_path"] + settings["paths"]["output_folder_prefix"]
-    if not os.path.exists(prediction_path):
-        os.mkdir(prediction_path)
 
-    print(f"Writing {len(reconstructed_patches)} items...")
-    _dict_to_patches(reconstructed_patches, prediction_path)
-    print("\nDone.")
 
-def _dict_to_patches(patch_list, prediction_path):
-    #TODO empty dict
-    #TODO if name w/o _ exists put all n_ there else make new entry
-    #TODO use util thing
-    big_dict = {}
-    for item_name, patch in patch_list:
-        item_index = item_name.split("_")[1]
-        item_sub_index = item_name.split("_")[2].replace(".nii.gz","")
-        if not item_index in big_dict.keys():
-            big_dict[item_index] = {}
-        big_dict[item_index][item_sub_index] = patch
+    item_dict = {}
+    reconstructed_patches = []
 
-    for item_name in big_dict.keys():
-        p_l = []
-        for i in range(8): # TODO
-            p_l.append(big_dict[item_name][str(i)])
-        patch = stitch_volume(p_l, (200,200,200)) # TODO
-        item_save_path  = f"{prediction_path}/patchvolume_{item_name}.nii.gz"
-        print(f"Writing {item_save_path}", end="\r",flush=True)
-        write_nifti(item_save_path, patch)
+    orig_shape, orig_type, mb_size = dataset.original_information()
+
+    len_loader = len(dataloader)
+    for item_index, item in enumerate(dataloader):
+        item_name = item["name"][0]
+        print(f"Predicting {item_name} {item_index}/{len_loader}", end="\r", flush=True)
+        volume       = item["volume"]
+        volume       = volume.cuda()
+
+        logits       = net(volume)
+
+        res             = logits.detach().cpu().numpy()
+        res[res > 0.5] = 1.0 
+        res[res <= 0.5] = 0.0
+
+
+        item_z = int(item_name.split("$")[0])
+        item_image = item_name.split("$")[1]
         
+
+        if item_image in item_dict.keys():
+            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
+        else:
+            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
+        
+
+
+    if orig_shape[0] > mb_size:
+        intermediate_patches    = reconstruct_patches_2d(item_dict, dataset)
+        reconstructed_patches   = dict_to_patches(intermediate_patches, orig_shape)
+    else:
+        reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
+        
+    for item_name, reconstructed_prediction in reconstructed_patches:
+        item_save_path      = f"{prediction_path}/{item_name}"
+
+        print(f"Writing {item_save_path}")
+        write_nifti(item_save_path, reconstructed_prediction)            
+
 print(f"\n\nPytorch version {torch.__version__}\n\n")
 
 # Initialize cuda

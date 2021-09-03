@@ -138,8 +138,8 @@ def get_patch_overlap(pred_patch, target_patch):
     Returns:
     true positive, true negative, false positive, false negative
     """
-    pred = get_blobs_fast(pred_patch)
-    target = get_blobs_fast(target_patch)
+    pred = get_blobs(pred_patch)
+    target = get_blobs(target_patch)
 
     # Create a list of all available targets
     # Could work better with a dict

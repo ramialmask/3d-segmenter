@@ -1,22 +1,22 @@
 {
     "retraining":"False",
-    "epochs":"180",
+    "epochs":"80",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
-        "class":"WeightedBinaryCrossEntropyLoss",
+        "class":"MixedDiceLoss",
         "class_frequency":"True",
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_folds":"1",
+        "test_folds":"2",
         "train_val_folds":"2",
         "test_split_rate":"0.2",
         "train_val_split_rate":"0.2"
     },
     "optimizer":{
         "class":"Adam",
-        "learning_rate":"1e-4",
+        "learning_rate":"1e-3",
         "decay":"Default",
         "momentum":"Default"
     },

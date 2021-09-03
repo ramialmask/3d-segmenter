@@ -1,6 +1,8 @@
 import os
 import json
+import cv2
 import numpy as np
+from dataset.dataset_2D import Dataset2D
 from dataset.training_dataset import TrainingDataset
 from dataset.training_dataset_2D import TrainingDataset2D
 from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
@@ -107,6 +109,10 @@ def normalize_histinfo(data, settings):
     data[data > cutoff] = cutoff
     return data
 
+def difference_of_gaussians(img, kernel_size):
+    img_1 = cv2.GaussianBlur(img, (1,1), 0)
+    img_2 = cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
+    return img_1 - img_2
 
 def get_norm_func(settings):
     # return normalize
@@ -115,13 +121,15 @@ def get_norm_func(settings):
     return normalize
     # return normalize_histinfo(data, settings=settings)
 
-def get_loader(settings, input_list, testing=False):
+def get_loader(settings, input_list, train=True, testing=False):
     """Retrieve a dataloader for a given input list
     Args:
         settings (dict) : The meta dictionary
         input_list(list): List of items for the dataset
+        train (bool)    : True if used for training, loads ground truth as well
         testing (bool)  : True if testing, False else
     """
+    # assert((train and testing) or (train and not testing) or (not train and not testing))
     norm_func = get_norm_func(settings)
     shuffle = True
     if testing:
@@ -130,7 +138,11 @@ def get_loader(settings, input_list, testing=False):
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
     # dataset     = TrainingDataset2DWeighted(settings, input_list, norm=norm_func)
-    dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
+    # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
+    # transform = train because there is no dedicated parameter for transformations (yet)
+    #Not testing because in testing/inference we do not need transforms (yet)
+    #Also really ugly 
+    dataset     = Dataset2D(settings, input_list, train=train, transform=not(testing), norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
 

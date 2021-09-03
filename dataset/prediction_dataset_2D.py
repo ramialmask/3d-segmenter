@@ -61,12 +61,19 @@ class PredictionDataset2D(Dataset):
     def __init__(self, settings, split, transform=None, norm=None):
         self.settings = settings
 
+        # Flag is set true if we use background channel, too
+        bg_channel = int(settings["dataloader"]["num_channels"]) == 2
+
         # Get paths
         nii_path = settings["paths"]["input_raw_path"]
+        if bg_channel:
+            bg_path = settings["paths"]["input_bg_path"]
 
         # create list
         image_list = []
         name_list = []
+        if bg_channel:
+            bg_list = []
 
         split_len = len(split)
 
@@ -77,6 +84,11 @@ class PredictionDataset2D(Dataset):
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
 
+            if bg_channel:
+                item_bg_path    = os.path.join(bg_path, item)
+                image_bg        = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
+                image_bg        = image_bg.astype(np.int64)
+
             # TODO parameterize
             if image.shape[0] > 100:
                 cut_images = cut_volume(image, item)
@@ -86,8 +98,6 @@ class PredictionDataset2D(Dataset):
             else:
                 self.original_shape, self.original_type = image.shape, image.dtype
                 prepare_lists(settings, item, image, image_list, name_list, transform, norm)
-
-            
 
         self.item_list = [image_list, name_list]
 

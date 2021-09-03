@@ -1,12 +1,13 @@
 {
-    "input_raw_path":           "/media/10TB/Projects/Biontech/segmentation/input/raw_new/",
-    "input_gt_path":            "/media/10TB/Projects/Biontech/segmentation/input/gt_new/",
-    "input_weigth_path":        "/media/10TB/Projects/Biontech/segmentation/input/weights/",
-    "input_model_path":         "/media/10TB/Projects/Biontech/segmentation/input/models/",
-    "output_model_path":        "/media/10TB/Projects/Biontech/segmentation/output/models/",
-    "output_prediction_path":   "/media/10TB/Projects/Biontech/segmentation/output/patches/",
+    "input_raw_path":           "/media/10TB/Projects/cFos/input/",
+    "input_gt_path":            "",
+    "input_bg_path":            "",
+    "input_weigth_path":        "",
+    "input_model_path":         "/media/10TB/Projects/cFos/segmentation/input/models/",
+    "output_model_path":        "",
+    "output_prediction_path":   "/media/10TB/Projects/cFos/segmentation/inference/output/",
     "writer_path":              "/home/rami/runs/",
-    "input_model":              "",
-    "output_folder_prefix":     "BioNTech small patches 2D U-Net WBCE Augmentation no CF",
-    "model_name":               "BioNTech small patches 2D U-Net WBCE Augmentation no CF"
+    "input_model":              "Small Patches MixedDice_0_0_79.dat",
+    "output_folder_prefix":     "Small Patches MixedDice",
+    "model_name":               "Small Patches MixedDice"
 }

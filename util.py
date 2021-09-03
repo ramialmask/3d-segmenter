@@ -71,7 +71,7 @@ def reconstruct_patches(item_dict,dataset):
     return result_list
 
 def reconstruct_patches_2d(item_dict, dataset):
-    original_shape, original_type = dataset.original_information()
+    original_shape, original_type, _ = dataset.original_information()
     
     result_list = []
     for item_name in item_dict.keys():
@@ -147,3 +147,41 @@ def stitch_volume(item_list, original_shape):
                         z*item_shape[0]:z*item_shape[0] +item_shape[0]] = item_list[counter]
                 counter+=1                  
     return result_item
+
+def dict_to_patches(patch_list, original_shape, prediction_path=""):
+    """Generate patches from sub patches that are smaller than the original shape
+    (e.g. when the input patch size is 400^3 and the network uses 100^3)
+    Args:
+        - patch_list (list)         : list of small patches
+        - original_shape(tuple)     : original data shape
+        - prediction_path(string)   : optional output path, used for prediction
+    """
+    #TODO empty dict
+    #TODO if name w/o _ exists put all n_ there else make new entry
+    #TODO instead of using patchvolume as a static name use name from dict
+    big_dict = {}
+    for item_name, patch in patch_list:
+        item_index = item_name.split("_")[1]
+        item_sub_index = item_name.split("_")[2].replace(".nii.gz","")
+        if not item_index in big_dict.keys():
+            big_dict[item_index] = {}
+        big_dict[item_index][item_sub_index] = patch
+
+    num_sub_patches= int((original_shape[0] / patch_list[0][1].shape[0]) **3)
+
+    if prediction_path == "":
+        result_list = []
+
+    for item_name in big_dict.keys():
+        p_l = []
+        for i in range(num_sub_patches):
+            p_l.append(big_dict[item_name][str(i)])
+        patch = stitch_volume(p_l, original_shape)
+        if prediction_path == "":
+            result_list.append([f"patchvolume_{item_name}.nii.gz", patch])
+        else:
+            item_save_path  = f"{prediction_path}/patchvolume_{item_name}.nii.gz"
+            print(f"Writing {item_save_path}", end="\r",flush=True)
+            write_nifti(item_save_path, patch)
+    if prediction_path == "":
+        return result_list

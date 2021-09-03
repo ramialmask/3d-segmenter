@@ -17,6 +17,7 @@ from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
 from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
+from loss.mixed_dice_loss import MixedDiceLoss
 from loaders import *
 from util import *
 from blobanalysis import get_patch_overlap
@@ -36,7 +37,8 @@ def _criterion(settings):
 
 def _net(settings):
     net_class   = settings["network"]
-    net         = globals()[net_class]()
+    num_channels= int(settings["dataloader"]["num_channels"])
+    net         = globals()[net_class](in_dim=num_channels)
     return net
 
 def _optimizer(settings, net):
@@ -112,8 +114,8 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     print(f"Length Train List:\t{len(train_val_list[0])}\nFirst ten entries:\t{train_val_list[0][:10]}")
     print(f"Length Val List:\t{len(train_val_list[1])}\nFirst ten entries:\t{train_val_list[1][:10]}")
 
-    train_loader, _    = get_loader(settings, train_val_list[0])
-    val_loader, _      = get_loader(settings, train_val_list[1])
+    train_loader, _    = get_loader(settings, train_val_list[0], train=True)
+    val_loader, _      = get_loader(settings, train_val_list[1], train=True)
     
     epochs          = int(settings["training"]["epochs"])
     
@@ -263,7 +265,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
 
         # Test on the best candidate and save the settings
         test_list       = settings["training"]["crossvalidation"]["test_set"]
-        test_loader, test_dataset     = get_loader(settings, test_list, True)
+        test_loader, test_dataset     = get_loader(settings, test_list, train=True, testing=True)
 
         test_loss, accuracy, precision, recall, f1_dice, reconstructed_patches =  test(best_model, criterion, test_loader, test_dataset)
         print(f"Test scores")
@@ -286,7 +288,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         if not os.path.exists(f"{model_save_dir}/patches/{test_fold}/"):
             os.mkdir(f"{model_save_dir}/patches/{test_fold}/")
  
-
+        print(len(reconstructed_patches))
         for item_name, reconstructed_prediction in reconstructed_patches:
             item_save_path      = f"{model_save_dir}/patches/{test_fold}/{item_name}"
             overlay_save_path   = f"{model_save_dir}/patches/{test_fold}/overlay_{item_name}"
@@ -370,8 +372,16 @@ def test(net, criterion, dataloader, dataset):
 
         result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
         
+    #TODO For smaller patches -> new reconstructed patches solution!!!
+    orig_shape, orig_type, mb_size = dataset.original_information()
 
-    reconstructed_patches = reconstruct_patches_2d(item_dict, dataset)
+
+    if orig_shape[0] > mb_size:
+        intermediate_patches    = reconstruct_patches_2d(item_dict, dataset)
+        reconstructed_patches   = dict_to_patches(intermediate_patches, orig_shape)
+    else:
+        reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
+    
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
