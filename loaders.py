@@ -2,6 +2,7 @@ import os
 import json
 import cv2
 import numpy as np
+import scipy.ndimage as nd
 from dataset.dataset_2D import Dataset2D
 from dataset.training_dataset import TrainingDataset
 from dataset.training_dataset_2D import TrainingDataset2D
@@ -114,10 +115,21 @@ def difference_of_gaussians(img, kernel_size):
     img_2 = cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
     return img_1 - img_2
 
+def convoluted_background_substraction(image, method="gauss", size=5):
+    res = -1
+    if method == "gauss":
+        filtered = nd.gaussian_filter(image, size)
+    elif method == "median":
+        filtered = nd.median_filter(image, size)
+    res = image - filtered
+    return res
+
 def get_norm_func(settings):
     # return normalize
     # return partial(normalize_global, settings=settings)
     # return partial(normalize_histinfo, settings=settings)
+    # fun = lambda x: convoluted_background_substraction(normalize(x), method="median")
+    # return fun
     return normalize
     # return normalize_histinfo(data, settings=settings)
 
@@ -138,10 +150,11 @@ def get_loader(settings, input_list, train=True, testing=False):
     else:
         batch_size  = int(settings["dataloader"]["batch_size"])
     # dataset     = TrainingDataset2DWeighted(settings, input_list, norm=norm_func)
-    # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
     # transform = train because there is no dedicated parameter for transformations (yet)
     #Not testing because in testing/inference we do not need transforms (yet)
     #Also really ugly 
+    #TODO
+    # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
     dataset     = Dataset2D(settings, input_list, train=train, transform=not(testing), norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset

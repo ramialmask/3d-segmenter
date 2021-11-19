@@ -1,13 +1,13 @@
 {
-    "input_raw_path":           "/media/10TB/Projects/cFos/input/",
-    "input_gt_path":            "",
+    "input_raw_path":           "/media/10TB/Projects/cFos/segmentation/input/raw artifact removal_new/",
+    "input_gt_path":            "/media/10TB/Projects/cFos/segmentation/input/gt_new no empty patches/",
     "input_bg_path":            "",
     "input_weigth_path":        "",
     "input_model_path":         "/media/10TB/Projects/cFos/segmentation/input/models/",
-    "output_model_path":        "",
-    "output_prediction_path":   "/media/10TB/Projects/cFos/segmentation/inference/output/",
+    "output_model_path":        "/media/10TB/Projects/cFos/segmentation/output/models/",
+    "output_prediction_path":   "/media/10TB/Projects/cFos/segmentation/output/patches/",
     "writer_path":              "/home/rami/runs/",
-    "input_model":              "Small Patches MixedDice_0_0_79.dat",
-    "output_folder_prefix":     "Small Patches MixedDice",
-    "model_name":               "Small Patches MixedDice"
+    "input_model":              "",
+    "output_folder_prefix":     "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal",
+    "model_name":               "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal"
 }

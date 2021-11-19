@@ -73,7 +73,8 @@ def wbce(input_tensor, target_tensor, weights=None, reduction='mean'):
     if torch.isnan(loss_r):
         print(f"Target {torch.max(target_tensor)}")
         print(f"Input {torch.max(input_tensor)}")
-        print(f"Loss {loss_r}")
+        print(f"Loss {torch.max(loss)}")
+        print(f"Loss_r {loss_r}")
     assert(not torch.isnan(loss_r))
     assert(not torch.isinf(loss_r))
     return loss_r

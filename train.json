@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"80",
+    "epochs":"100",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
@@ -9,10 +9,20 @@
         "reduction":"sum"
     },
     "crossvalidation":{
-        "test_folds":"2",
+        "test_folds":"1",
         "train_val_folds":"2",
         "test_split_rate":"0.2",
-        "train_val_split_rate":"0.2"
+        "train_val_split_rate":"0.2",
+        "test_set":[
+                "patchvolume_1147_5.nii.gz",
+                "patchvolume_969_1.nii.gz",
+                "patchvolume_753_6.nii.gz",
+                "patchvolume_695_2.nii.gz",
+                "patchvolume_695_1.nii.gz",
+                "patchvolume_1230_5.nii.gz",
+                "patchvolume_1008_3.nii.gz",
+                "patchvolume_1147_1.nii.gz",
+                "patchvolume_1147_0.nii.gz"]    
     },
     "optimizer":{
         "class":"Adam",

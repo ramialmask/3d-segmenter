@@ -84,7 +84,7 @@ def prepare_lists(settings, item, image, image_list, name_list, image_gt=None, g
 
         if train:
             image_gt_z  = np.expand_dims(image_gt_z,0)
-            image_gt_z.dtype = np.int32
+            image_gt_z = image_gt_z.astype(np.int32)
             image_gt_z  = torch.tensor(image_gt_z).float()
             gt_list.append(image_gt_z)
 
@@ -94,8 +94,18 @@ def prepare_lists(settings, item, image, image_list, name_list, image_gt=None, g
 
         image_z = torch.tensor(image_z).float()
 
+        #XXX
+        # if image_z.shape[-1] > 104 or image_bg_z.shape[-1] > 104 or image_gt_z.shape[-1] > 100:
+        #     print(f"{item} {image_z.shape} {image_bg.shape} {image_gt_z.shape}")
+
         image_list.append(image_z)
         name_list.append(f"{z}${item}")
+
+class Dataset2DSlow(Dataset):
+    def __init__(self, settings, splot, transform=False, norm=None):
+        pass
+    #TODO Ganze Datenladenlogik in getget_item ianstelle des Konstruktors
+    #TODO Buffer für Listen
 
 class Dataset2D(Dataset):
     def __init__(self, settings, split, train=True, transform=False, norm=None):

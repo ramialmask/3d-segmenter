@@ -18,13 +18,18 @@ def _net(settings):
     return net
 
 
-def prediction(settings):
+def prediction(settings, index_start=-1, index_end=-1):
     net = _net(settings)
-    input_list = os.listdir(settings["paths"]["input_raw_path"])
+    if index_start == -1:
+        input_list = os.listdir(settings["paths"]["input_raw_path"])
+    else:
+        input_list = os.listdir(settings["paths"]["input_raw_path"])[index_start:index_end]
     dataloader, dataset = get_loader(settings,input_list,False,True)
     batchsize  = int(settings["dataloader"]["batch_size"])
 
     prediction_path = settings["paths"]["output_prediction_path"] + settings["paths"]["output_folder_prefix"]
+    if not os.path.exists(prediction_path):
+        os.mkdir(prediction_path)
 
 
     item_dict = {}
@@ -79,4 +84,11 @@ torch.cuda.set_device(0)
 settings = read_meta_dict("./","predict")
 
 # Run the program
-prediction(settings)
+len_p = len(os.listdir(settings["paths"]["input_raw_path"]))
+step_s = 600
+for step in range(0, len_p, step_s):
+    print(f"Predicting {step} - {step + step_s}/{len_p}")
+    if len_p - step < step_s:
+        prediction(settings, step, len_p-1)
+    else:
+        prediction(settings, step, step+step_s)

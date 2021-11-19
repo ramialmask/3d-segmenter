@@ -18,7 +18,7 @@
         "transform":{
             "crop":"5,5"
         },
-        "padding":"2",
+        "padding":"0",
         "gt_padding":"0",
         "padding_type":"circular"
     },

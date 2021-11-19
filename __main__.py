@@ -35,10 +35,29 @@ def _criterion(settings):
         criterion = globals()[criterion_class]()
     return criterion
 
+def load_model(net, path):
+    t_ = torch.load(path)
+    net.load_state_dict(t_)
+
+def save_model(net, model_save_path):
+    torch.save(net.state_dict(), model_save_path)
+
 def _net(settings):
     net_class   = settings["network"]
     num_channels= int(settings["dataloader"]["num_channels"])
     net         = globals()[net_class](in_dim=num_channels)
+    from monai.networks.nets import unet
+    net = unet(
+            spatial_dims=2,
+            in_channels=num_channels,
+            out_channels=1,
+            channels=(4,8,16),
+            strides=(2,2),
+            num_res_units=4
+    )
+    from monai.networks.nets.segresnet import SegResNet
+    net = SegResNet(
+            spatial_dims=2)
     return net
 
 def _optimizer(settings, net):
@@ -75,8 +94,13 @@ def crossvalidation(settings):
     train_val_split_rate    = float(settings["training"]["crossvalidation"]["train_val_split_rate"])
     train_val_split_amount  = int(settings["training"]["crossvalidation"]["train_val_folds"])
     
-    test_lists = split_list(input_list, test_split_rate, test_split_amount)
-    
+    if not "test_set" in settings["training"]["crossvalidation"].keys():
+        test_lists = split_list(input_list, test_split_rate, test_split_amount)
+    else:
+        t0 = settings["training"]["crossvalidation"]["test_set"]
+        t1 = [i for i in input_list if i not in t0]
+        test_lists = [(t1, t0)]
+
     df = pd.DataFrame(columns=["Test Fold","Validation Fold", "Epoch", "Train Loss", "Validation Loss", "Validation Accuracy", "Validation Precision", "Validation Recall", "Validation Dice"])
 
     df.set_index(["Test Fold","Validation Fold","Epoch"])
@@ -156,6 +180,7 @@ def train_epoch(net, optimizer, criterion, dataloader):
         # weights      = weights.cuda()
 
         logits      = net(volume)
+        logits      = torch.sigmoid(logits)
         # loss        = criterion(logits, segmentation, weights=weights)
         loss        = criterion(logits, segmentation)
         loss.backward()
@@ -179,6 +204,7 @@ def validate_epoch(net, criterion, dataloader):
         # weights      = weights.cuda()
 
         logits      = net(volume)
+        logits      = torch.sigmoid(logits)
         # loss        = criterion(logits, segmentation, weights=weights)
         loss        = criterion(logits, segmentation)
         running_loss += loss.item()
@@ -218,9 +244,11 @@ def save_epoch(settings, net, epoch, model_name, test_fold, val_fold, last_model
     model_save_path = os.path.join(model_save_dir, settings["paths"]["model_name"] + f"_{test_fold}_{val_fold}_{epoch}.dat")
 
     # Save the model and the meta information
-    net.save_model(model_save_path)
+    save_model(net, model_save_path)
     write_meta_dict(model_save_dir, settings, "train")
     return model_save_dir
+
+
 
 def test_crossvalidation(settings, df, model_name, model_save_dir):
     """Calculate the best epoch for each test fold and compute the score of the best model
@@ -259,7 +287,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
         # Once we have the best model path, we need to update the settings to get the correct test folds
         settings        = read_meta_dict(best_model_path, "train")
         best_model      = _net(settings)
-        best_model.load_model(best_model_data_path)
+        load_model(best_model, best_model_data_path)
         best_model      = best_model.cuda()
         criterion       = _criterion(settings)
 
@@ -348,6 +376,7 @@ def test(net, criterion, dataloader, dataset):
         # weights      = weights.cuda()
 
         logits       = net(volume)
+        logits       = torch.sigmoid(logits)
         # loss        = criterion(logits, segmentation, weights)
         loss        = criterion(logits, segmentation)
         running_loss += loss.item()
@@ -418,6 +447,9 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
 # Initialize cuda
 torch.cuda.init()
 torch.cuda.set_device(0)
+
+#Make reproducible
+torch.manual_seed(0)
 
 # Read the meta dictionary
 settings = read_meta_dict("./","train")
