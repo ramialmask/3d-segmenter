@@ -67,6 +67,7 @@ class Unet3D(torch.nn.Module):
         self.out = conv_block_3d(self.num_filter,out_dim,act_fn)
 
     def forward(self,x):
+        print(x.shape)
         down_1 = self.down_1(x)
         pool_1 = self.pool_1(down_1)
         down_2 = self.down_2(pool_1)

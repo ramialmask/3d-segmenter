@@ -3,7 +3,9 @@ import os
 import torch
 import numpy as np
 import nibabel as nib
+import random
 
+import torchvision.transforms as TF
 from torch.utils.data import Dataset, DataLoader
 """
 - Load all datasets into one huge list
@@ -66,75 +68,120 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
 
 class TrainingDataset(Dataset):
-    #TODO Needs transformation, rotation, splits?
-    def __init__(self, settings, split, transform=None, norm=None):
+    #TODO Background!
+    def __init__(self, settings, split, transform=None, norm=None, train=False):
         self.settings = settings
 
+        self.train = train
+
+        # Flag is set true if we use background channel, too
+        bg_channel = int(settings["dataloader"]["num_channels"]) == 2
+        
         # Get paths
         nii_path = settings["paths"]["input_raw_path"]
-        gt_path = settings["paths"]["input_gt_path"]
+        if train:
+            gt_path = settings["paths"]["input_gt_path"]
+        if bg_channel:
+            bg_path = settings["paths"]["input_bg_path"]
 
         # create list
         nii_list = []
-        gt_list = []
+        if train:
+            gt_list = []
+        if bg_channel:
+            bg_list = []
 
         mb_size = int(self.settings["dataloader"]["block_size"])
         self.vdivs = -1
         name_list = []
         
 
+        self.transform_p = transform
         # Load data
         for item in split:
             item_nii_path   = os.path.join(nii_path, item)
-            item_gt_path    = os.path.join(gt_path, item)
+            if train:
+                item_gt_path    = os.path.join(gt_path, item)
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
-            image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
+            if train:
+                image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
+                image_gt[image_gt > 0] = 1
+
+            if bg_channel:
+                item_bg_path    = os.path.join(bg_path, item)
+                image_bg        = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
 
             self.original_shape = image.shape
             self.original_type = image.dtype
             image = image.astype(np.int64)
-
-            if transform:
-                image       = transform(image)
-                image_gt    = transform(image_gt)
+            if bg_channel:
+                image_bg = image_bg.astype(np.int64)
 
             if norm:
                 image       = norm(image)
                 # image_gt    = norm(image_gt)
+                if bg_channel:
+                    image_bg = norm(image_bg)
             
 
             if image.shape[0] > mb_size:
                 # Torchify
-                image = torch.tensor(image).float()
-                image_gt = torch.tensor(image_gt).float()
+                #TODO torchify downstairs
+                # image = torch.tensor(image).float()
+                if train:
+                    image_gt = torch.tensor(image_gt).float()
 
                 vdivs = find_divs(self.settings, image)
                 self.vdivs = vdivs
                 offset_value = int(self.settings["preprocessing"]["padding"])
                 offset_volume = (offset_value, offset_value, offset_value)
-                offset_segmentation = (0,0,0)
+                offset_seg_value = 0
+                if int(self.settings["preprocessing"]["gt_padding"]) > 0:
+                    offset_seg_value = int(self.settings["preprocessing"]["gt_padding"])
+                offset_segmentation = (offset_seg_value,offset_seg_value,offset_seg_value)
 
-                image_list = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume).unsqueeze(1)]
-                image_gt_list  = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
+                image_list = [np.expand_dims(x, 0) for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume)]
+                if train:
+                    image_gt_list  = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
+
+                if bg_channel:
+                    image_bg_list = [np.expand_dims(x, 0) for x in get_patch_data3d(image_bg, divs=vdivs, offset=offset_volume)]
+                    image_list = [torch.tensor(np.concatenate(a, 0)).float() for a in list(zip(image_list, image_bg_list))]
+                
 
                 nii_list = nii_list + image_list
-                gt_list = gt_list + image_gt_list
+                if train:
+                    gt_list = gt_list + image_gt_list
                 name_list = name_list + [item for i in range(len(image_list))]
             else:
                 # Pad
                 padding_value = int(self.settings["preprocessing"]["padding"])
+                if train:
+                    gt_padding_value = int(self.settings["preprocessing"]["gt_padding"])
+                    if gt_padding_value > 0:
+                        image_gt = np.pad(image_gt, gt_padding_value, "reflect")
 
                 image = np.pad(image, padding_value, "reflect")
+                image = np.expand_dims(image, 0)
+                if bg_channel:
+                    image_bg = np.pad(image_bg, padding_value, "reflect")
+                    image_bg = np.expand_dims(image_bg, 0)
+                    image = np.concatenate((image, image_bg), 0)
+
 
                 # Torchify
                 image = torch.tensor(image).float()
-                image_gt = torch.tensor(image_gt).float()
-                nii_list.append(image.unsqueeze(0))
-                gt_list.append(image_gt.unsqueeze(0))
+                nii_list.append(image)
+                if train:
+                    image_gt = torch.tensor(image_gt).float()
+                    gt_list.append(image_gt.unsqueeze(0))
                 name_list.append(item)
 
-        self.item_list = [nii_list, gt_list, name_list]
+        if train:
+            self.item_list = [nii_list, gt_list, name_list]
+        else:
+            self.item_list = [nii_list, name_list]
 
     def original_information(self):
         return self.original_shape, self.original_type, self.vdivs
@@ -142,8 +189,37 @@ class TrainingDataset(Dataset):
     def __len__(self):
         return len(self.item_list[0])
 
+    def transform(self, volume, segmentation):
+        # Volume and segmentation
+        # Random horizontal flip
+        if random.random() > 0.5:
+            volume          = TF.functional.hflip(volume)
+            segmentation    = TF.functional.hflip(segmentation)
+        # Random vertical flip
+        if random.random() > 0.5:
+            volume          = TF.functional.vflip(volume)
+            segmentation    = TF.functional.vflip(segmentation)
+
+        # Only volume
+        # Random gaussian blur
+        # if random.random() > 0.9:
+        #     volume = self.gaussian(volume)
+
+        return volume, segmentation
     def __getitem__(self, idx):
-        return {"volume":self.item_list[0][idx], "segmentation":self.item_list[1][idx], "name":self.item_list[2][idx]}
+        volume = self.item_list[0][idx]
+        if self.train:
+            name = self.item_list[2][idx]
+            segmentation = self.item_list[1][idx]
+
+            if self.transform_p:
+                volume, segmentation = self.transform(volume, segmentation)
+
+            return {"volume":volume, "segmentation":segmentation, "name":name}
+        else:
+            name = self.item_list[1][idx]
+            return {"volume":volume, "name":name}
+
 
 
 

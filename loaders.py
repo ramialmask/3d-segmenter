@@ -8,6 +8,7 @@ from dataset.training_dataset import TrainingDataset
 from dataset.training_dataset_2D import TrainingDataset2D
 from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
 from dataset.prediction_dataset_2D import PredictionDataset2D
+from dataset.large_prediction_dataset import LargePredictionDataset
 from torch.utils.data import DataLoader
 from functools import partial
 
@@ -81,7 +82,9 @@ def write_meta_dict(path, settings, mode="train"):
 def normalize(data):
     """Normalization
     """
+    # data[data < 190] = 0
     data = (data - np.min(data)) / (np.max(data) - np.min(data))
+    # data = (data - 190 )/ (np.max(data) - np.min(data))
     return data
 
 def normalize_global(data, settings):
@@ -155,7 +158,8 @@ def get_loader(settings, input_list, train=True, testing=False):
     #Also really ugly 
     #TODO
     # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
-    dataset     = Dataset2D(settings, input_list, train=train, transform=not(testing), norm=norm_func)
+    print(f"BATCHSIZE {batch_size}")
+    dataset     = TrainingDataset(settings, input_list, train=train, transform=not(testing), norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
 
@@ -164,7 +168,7 @@ def get_prediction_loader(settings):
     input_list  = os.listdir(settings["paths"]["input_raw_path"])
     print(f"Creating dataset of size {len(input_list)}...")
     batch_size  = int(settings["dataloader"]["batch_size"])
-    dataset     = PredictionDataset2D(settings, input_list, norm=norm_func)     
+    dataset     = LargePredictionDataset(settings, input_list, norm=norm_func)     
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     print("\nDone.")
     return loader, dataset

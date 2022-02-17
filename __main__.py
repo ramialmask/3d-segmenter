@@ -22,7 +22,7 @@ from loaders import *
 from util import *
 from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
-
+from monai.losses.dice import DiceLoss
 
 def _criterion(settings):
     """TODO Either all json entries must include torch.nn or every torch.nn loss gets imported directly
@@ -33,6 +33,7 @@ def _criterion(settings):
         criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
     else:
         criterion = globals()[criterion_class]()
+    criterion = DiceLoss()
     return criterion
 
 def load_model(net, path):
@@ -48,16 +49,16 @@ def _net(settings):
     net         = globals()[net_class](in_dim=num_channels)
     from monai.networks.nets import unet
     net = unet(
-            spatial_dims=2,
+            spatial_dims=3,
             in_channels=num_channels,
             out_channels=1,
             channels=(4,8,16),
-            strides=(2,2),
+            strides=(2,2,2),
             num_res_units=4
     )
-    from monai.networks.nets.segresnet import SegResNet
-    net = SegResNet(
-            spatial_dims=2)
+    # from monai.networks.nets.segresnet import SegResNet
+    # net = SegResNet(
+    #         spatial_dims=3)
     return net
 
 def _optimizer(settings, net):
@@ -152,7 +153,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
     print("Test Fold\tVal Fold\tEpoch\tTraining Loss\tValidation Loss\t\tAccuracy\tPrecision\tRecall\tDice")
     last_model_dir = ""
     for epoch in range(epochs):
-        net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader)
+        net, optimizer, criterion, running_loss = train_epoch(net, optimizer, criterion, train_loader, epoch)
         validation_loss, accuracy, precision, recall, f1_dice = validate_epoch(net, criterion, val_loader)
         
         scheduler.step(validation_loss)
@@ -163,7 +164,7 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
         last_model_dir = save_epoch(settings, net, epoch, model_name, test_fold, train_val_fold, last_model_dir)
     return df
 
-def train_epoch(net, optimizer, criterion, dataloader):
+def train_epoch(net, optimizer, criterion, dataloader, epoch):
     """Trains a model for a single epoch
     """
     net.train()
@@ -186,6 +187,17 @@ def train_epoch(net, optimizer, criterion, dataloader):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
+    # if epoch % 5 == 0:
+    #     import matplotlib.pyplot as plt
+    #     plt.figure()
+    #     fig, axes = plt.subplots(ncols = 3)
+    #     volume          = volume.cpu().detach().numpy()
+    #     segmentation    = segmentation.cpu().detach().numpy()
+    #     logits          = logits.cpu().detach().numpy()
+    #     axes[0].imshow(np.max(volume[0,0,:,:,:], axis=2))
+    #     axes[1].imshow(np.max(segmentation[0,0,:,:,:], axis=2))
+    #     axes[2].imshow(np.max(logits[0,0,:,:,:], axis=2))
+    #     plt.savefig(f"/home/rami/Documents/segmentation figures/Test_{epoch}.png")
     return net, optimizer, criterion, (running_loss / d_len)
 
 def validate_epoch(net, criterion, dataloader):
@@ -247,8 +259,6 @@ def save_epoch(settings, net, epoch, model_name, test_fold, val_fold, last_model
     save_model(net, model_save_path)
     write_meta_dict(model_save_dir, settings, "train")
     return model_save_dir
-
-
 
 def test_crossvalidation(settings, df, model_name, model_save_dir):
     """Calculate the best epoch for each test fold and compute the score of the best model
@@ -411,6 +421,58 @@ def test(net, criterion, dataloader, dataset):
     else:
         reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
     
+    precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
+    return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
+
+def test(net, criterion, dataloader, dataset):
+    """Tests a given network on provided test data
+    """
+    net.eval()
+    running_loss = 0.0
+    d_len = len(dataloader)
+
+    # Saving the TP, TN, FP, FN for all items to calculate stats
+    result_list = [0, 0, 0, 0]
+
+    item_dict = -1
+    if not dataset.original_information()[2] == -1:
+        # In order to save patches, the subvolumes need to be saved in 
+        # a dict grouped by their name
+        item_dict = {}
+    else:
+        reconstructed_patches = []
+
+    for item in dataloader:
+        volume       = item["volume"]
+        segmentation = item["segmentation"]
+
+        volume       = volume.cuda()
+        segmentation = segmentation.cuda()
+
+        logits       = net(volume)
+        loss        = criterion(logits, segmentation)
+        running_loss += loss.item()
+
+        res             = logits.detach().cpu().numpy()
+        res[res > 0.5] = 1.0 
+        res[res <= 0.5] = 0.0
+
+        item_name = item["name"][0]
+        if not item_dict == -1:
+            if item_name not in item_dict:
+                item_dict[item_name] = []
+            item_dict[item_name].append(res.astype(np.float32))
+        else:
+            res = res.squeeze().squeeze()
+            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
+
+    res             = np.ravel(res)
+    target          = np.ravel(segmentation.cpu().numpy())
+    stats_          = calc_statistics(res, target)
+
+    result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
+    if not item_dict == -1:
+        reconstructed_patches = reconstruct_patches(item_dict, dataset)
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 

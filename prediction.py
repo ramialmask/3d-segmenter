@@ -13,7 +13,17 @@ def _net(settings):
     model_path      = settings["paths"]["input_model_path"] + settings["paths"]["input_model"]
     print(f"Loading model {model_path}")
     net             = globals()[net_class]()
-    net.load_model(model_path)
+    from monai.networks.nets import unet
+    net = unet(
+            spatial_dims=3,
+            in_channels=1,
+            out_channels=1,
+            channels=(4,8,16),
+            strides=(2,2,2),
+            num_res_units=4
+    )
+    t_ = torch.load(model_path)
+    net.load_state_dict(t_)
     net             = net.cuda()
     return net
 
@@ -51,22 +61,18 @@ def prediction(settings, index_start=-1, index_end=-1):
         res[res <= 0.5] = 0.0
 
 
-        item_z = int(item_name.split("$")[0])
-        item_image = item_name.split("$")[1]
-        
-
-        if item_image in item_dict.keys():
-            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
+        if not item_dict == -1:
+            if item_name not in item_dict:
+                item_dict[item_name] = []
+            item_dict[item_name].append(res.astype(np.float32))
         else:
-            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
+            res = res.squeeze().squeeze()
+            reconstructed_patches.append([item_name, res.astype(dataset.original_information()[1])])
         
 
 
-    if orig_shape[0] > mb_size:
-        intermediate_patches    = reconstruct_patches_2d(item_dict, dataset)
-        reconstructed_patches   = dict_to_patches(intermediate_patches, orig_shape)
-    else:
-        reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
+    if not item_dict == -1:
+        reconstructed_patches = reconstruct_patches(item_dict, dataset)
         
     for item_name, reconstructed_prediction in reconstructed_patches:
         item_save_path      = f"{prediction_path}/{item_name}"
@@ -85,10 +91,13 @@ settings = read_meta_dict("./","predict")
 
 # Run the program
 len_p = len(os.listdir(settings["paths"]["input_raw_path"]))
-step_s = 600
-for step in range(0, len_p, step_s):
-    print(f"Predicting {step} - {step + step_s}/{len_p}")
-    if len_p - step < step_s:
-        prediction(settings, step, len_p-1)
-    else:
-        prediction(settings, step, step+step_s)
+step_s = 200
+if len_p <= step_s:
+    prediction(settings, 0, len_p)
+else:
+    for step in range(0, len_p, step_s):
+        print(f"Predicting {step} - {step + step_s}/{len_p}")
+        if len_p - step < step_s:
+            prediction(settings, step, len_p-1)
+        else:
+            prediction(settings, step, step+step_s)

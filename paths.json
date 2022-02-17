@@ -1,13 +1,13 @@
 {
-    "input_raw_path":           "/media/10TB/Projects/cFos/segmentation/input/raw artifact removal_new/",
-    "input_gt_path":            "/media/10TB/Projects/cFos/segmentation/input/gt_new no empty patches/",
-    "input_bg_path":            "",
+    "input_raw_path":           "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/input/data/C01/",
+    "input_gt_path":            "",
+    "input_bg_path":            "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/input/data/C00/",
     "input_weigth_path":        "",
-    "input_model_path":         "/media/10TB/Projects/cFos/segmentation/input/models/",
-    "output_model_path":        "/media/10TB/Projects/cFos/segmentation/output/models/",
-    "output_prediction_path":   "/media/10TB/Projects/cFos/segmentation/output/patches/",
+    "input_model_path":         "",
+    "output_model_path":        "",
+    "output_prediction_path":   "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/output/inference/",
     "writer_path":              "/home/rami/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal",
-    "model_name":               "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal"
+    "output_folder_prefix":     "Antibody Nerves C01",
+    "model_name":               ""
 }
