@@ -92,9 +92,10 @@ class MixedDiceLoss(_Loss):
         self.weight_CL = weight_CL
 
     def forward(self, input, target, target_skeleton=None):
-        cldice_loss = soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction) 
-        dloss = dice_loss(input, target)
+        cldice_loss =soft_cldice_loss(input, target, target_skeleton, reduction=self.reduction) 
+        dloss =dice_loss(input, target)
         loss = self.weight_CL * cldice_loss + (1-self.weight_CL) * dloss
+        # print(f"{cldice_loss} {dloss} {loss}")
         return loss
 
 class WBCECenterlineLoss(_WeightedLoss):

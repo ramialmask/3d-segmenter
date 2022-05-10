@@ -9,6 +9,8 @@ from dataset.training_dataset_2D import TrainingDataset2D
 from dataset.training_dataset_2D_weighted import TrainingDataset2DWeighted
 from dataset.prediction_dataset_2D import PredictionDataset2D
 from dataset.large_prediction_dataset import LargePredictionDataset
+from dataset.training_centerline_dataset import TrainingCenterlineDataset
+from dataset.numpy_dataset import NumpyDataset
 from torch.utils.data import DataLoader
 from functools import partial
 
@@ -159,7 +161,9 @@ def get_loader(settings, input_list, train=True, testing=False):
     #TODO
     # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
     print(f"BATCHSIZE {batch_size}")
-    dataset     = TrainingDataset(settings, input_list, train=train, transform=not(testing), norm=norm_func)
+    dataset     = TrainingDataset(settings, input_list, transform=not(testing), norm=norm_func, train=train)
+    # dataset     = TrainingCenterlineDataset(settings, input_list, transform=not(testing), norm=norm_func)
+    # dataset     = NumpyDataset(settings, input_list, transform=not(testing), norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
 

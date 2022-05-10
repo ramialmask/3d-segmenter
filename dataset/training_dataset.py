@@ -104,9 +104,11 @@ class TrainingDataset(Dataset):
                 item_gt_path    = os.path.join(gt_path, item)
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
+            image       = np.squeeze(image)
             if train:
                 image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
                 image_gt[image_gt > 0] = 1
+                image_gt    = np.squeeze(image_gt)
 
             if bg_channel:
                 item_bg_path    = os.path.join(bg_path, item)
@@ -148,7 +150,9 @@ class TrainingDataset(Dataset):
                 if bg_channel:
                     image_bg_list = [np.expand_dims(x, 0) for x in get_patch_data3d(image_bg, divs=vdivs, offset=offset_volume)]
                     image_list = [torch.tensor(np.concatenate(a, 0)).float() for a in list(zip(image_list, image_bg_list))]
-                
+                else:
+                    image_list = [torch.tensor(img).float() for img in image_list]
+
 
                 nii_list = nii_list + image_list
                 if train:
@@ -208,6 +212,7 @@ class TrainingDataset(Dataset):
         return volume, segmentation
     def __getitem__(self, idx):
         volume = self.item_list[0][idx]
+
         if self.train:
             name = self.item_list[2][idx]
             segmentation = self.item_list[1][idx]
@@ -215,6 +220,15 @@ class TrainingDataset(Dataset):
             if self.transform_p:
                 volume, segmentation = self.transform(volume, segmentation)
 
+            # from matplotlib import pyplot as plt
+            # plt.figure()
+            # fig, axes = plt.subplots(ncols = 2)
+            # vol          = volume.numpy()
+            # seg    = segmentation.numpy()
+            # axes[0].imshow(np.max(vol[0,:,:,:], axis=2))
+            # axes[1].imshow(np.max(seg[0,:,:,:], axis=2))
+            # plt.show()
+            # exit()
             return {"volume":volume, "segmentation":segmentation, "name":name}
         else:
             name = self.item_list[1][idx]

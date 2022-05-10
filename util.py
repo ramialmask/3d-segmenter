@@ -10,7 +10,8 @@ def get_model_name(settings):
     model_name += " factor " + settings["training"]["scheduler"]["factor"] + " "
     model_name += settings["training"]["loss"]["class"] + " LR=" + settings["training"]["optimizer"]["learning_rate"]
     model_name += " Blocksize " + settings["dataloader"]["block_size"] 
-    model_name += " Epochs " + settings["training"]["epochs"] + " "+ " | " + str(datetime.datetime.now())
+    model_name += " Epochs " + settings["training"]["epochs"] + "  I  " + str(datetime.datetime.now())
+    model_name = model_name.replace(":", "-").replace(".",",")
 
     return model_name
 

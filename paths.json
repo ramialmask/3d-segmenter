@@ -1,13 +1,14 @@
 {
-    "input_raw_path":           "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/input/data/C01/",
-    "input_gt_path":            "",
-    "input_bg_path":            "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/input/data/C00/",
+    "input_raw_path":           "/media/rami/18TB/Alpha BTX/Large patches/C01/",
+    "input_gt_path":            "/media/rami/18TB/Alpha BTX/Large patches/",
+    "input_gt_center_path":     "/media/rami/18TB/Alpha BTX/Large patches/",
+    "input_bg_path":            "/media/rami/18TB/Alpha BTX/Large patches/C00/",
     "input_weigth_path":        "",
-    "input_model_path":         "",
-    "output_model_path":        "",
-    "output_prediction_path":   "/media/rami/4E7F10B756ABEBBE/Antibody project/Neuron segmentation/output/inference/",
+    "input_model_path":         "/media/10TB/Projects/alpha-btx/segmentation/input/models/",
+    "output_model_path":        "/media/10TB/Projects/alpha-btx/segmentation/output/models/",
+    "output_prediction_path":   "/media/rami/18TB/Alpha BTX/Prediction/",
     "writer_path":              "/home/rami/runs/",
-    "input_model":              "",
-    "output_folder_prefix":     "Antibody Nerves C01",
+    "input_model":              "model_1000.dat",
+    "output_folder_prefix":     "Alpha-BTX Retraining",
     "model_name":               ""
 }

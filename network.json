@@ -12,7 +12,7 @@
         "normalization":"True",
         "normalization_type":"global",
         "normalization_values":{
-            "foreground":["622.0","65535.0"],
+            "foreground":["0.0","32080.0"],
             "cutoff":"0.999"
         },
         "transform":{
@@ -24,14 +24,14 @@
     },
     "dataloader":{
         "num_channels":"2",
-        "batch_size":"32",
+        "batch_size":"16",
         "shuffle":"True",
         "num_workers":"0",
         "block_size":"100",
         "drop_last":"False",
         "div_size":"-1"
     },
-    "network":"Unet2D",
+    "network":"Unet3D",
     "prediction":{
         "threshold":0.5,
         "sigmoid":"True",

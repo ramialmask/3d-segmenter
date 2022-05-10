@@ -3,19 +3,10 @@ import os
 import torch
 import numpy as np
 import nibabel as nib
+import random
 
+import torchvision.transforms as TF
 from torch.utils.data import Dataset, DataLoader
-"""
-- Load all datasets into one huge list
-- iterate over this list as method of getitem
-Pro:
-    faster access to data (already in ram)
-    no awkwardly large getitem method
-    no multilist (dict of list of lists) as item but a simple dict
-Cons:
-    needs more ram 
-    longer setup time (init should load stuff into RAM)
-"""
 
 def find_divs(settings, volume):
     """Find divs for @get_volume_from_patches3d according to the blocksize
@@ -64,19 +55,13 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
                 patches.append(patch)
 
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
-
-class TrainingCenterlineDataset(Dataset):
-    def __init__(self, settings, split, transform=None, norm=None):
+class NumpyDataset(Dataset):
+    def __init__(self, settings, split, transform=None, norm=None, train=False):
         self.settings = settings
 
         # Get paths
         nii_path    = settings["paths"]["input_raw_path"]
-        bg_path     = ""
-        if settings["paths"]["input_bg_path"]:
-            bg_path = settings["paths"]["input_bg_path"]
-            print("Loading data with background.")
-        else:
-            print("Loading data without background.")
+        bg_path     = settings["paths"]["input_raw_path"]
         gt_path     = settings["paths"]["input_gt_path"]
         center_path = settings["paths"]["input_gt_center_path"]
 
@@ -96,20 +81,20 @@ class TrainingCenterlineDataset(Dataset):
             item_center_path    = os.path.join(center_path, item)
             item_gt_path        = os.path.join(gt_path, item)
 
-            image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
-            image_center= np.swapaxes(nib.load(item_center_path).dataobj, 0, 1).astype(np.int64)
-            image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
+            image       = np.load(item_nii_path)
+            image_center= np.load(item_center_path)
+            image_gt    = np.load(item_gt_path)
 
             self.original_shape = image.shape
             self.original_type = image.dtype
-            image = image.astype(np.int64)
+            # image = image.astype(np.int64)
             image_gt[image_gt > 1] = 1
             image_center[image_center > 1] = 1
 
             if bg_path:
                 item_bg_path= os.path.join(bg_path, item)
-                image_bg    = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
-                image_bg    = image_bg.astype(np.int64)
+                image_bg    = np.load(item_bg_path)
+                image_bg    = image_bg
 
             if norm:
                 image       = norm(image)
@@ -172,12 +157,10 @@ class TrainingCenterlineDataset(Dataset):
         # self.item_list = [nii_list, bg_list, center_list, gt_list, name_list]
         self.item_list = [nii_list, center_list, gt_list, name_list]
 
-    def original_information(self):
-        return self.original_shape, self.original_type, self.vdivs
-
     def __len__(self):
-        return len(self.item_list[0])
+        return len(self.item_list)
 
+   
     # def transform(self, volume, background, centerline, segmentation):
     def transform(self, volume, centerline, segmentation):
         # Volume and segmentation
@@ -202,6 +185,8 @@ class TrainingCenterlineDataset(Dataset):
         # return volume, background, centerline, segmentation
         return volume,  centerline, segmentation
 
+    def original_information(self):
+        return self.original_shape, self.original_type, self.vdivs
     def __getitem__(self, idx):
         volume          = self.item_list[0][idx]
         # background      = self.item_list[1][idx]
@@ -215,6 +200,8 @@ class TrainingCenterlineDataset(Dataset):
         result["centerline"]    = centerline
         result["segmentation"]  = segmentation
         result["name"]          = name
+        # print(f"Volume range\t{torch.min(volume)} {torch.max(volume):.2f} {volume.dtype}")
+        # print(f"GT range\t{torch.min(segmentation)} {torch.max(segmentation)} {volume.dtype}")
 
         return result
 
