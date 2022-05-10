@@ -27,12 +27,12 @@ from classify_patches import classify_patch
 # Remove deprecated parts
 def _criterion():
     # criterion = CenterlineDiceLoss()#
-    criterion = WBCECenterlineLoss(0.2)#
+    criterion = WeightedBinaryCrossEntropyLoss()#WBCECenterlineLoss(0.2)#
     return criterion
 
 def _net():
     # Make it 2channel
-    net = Unet3D()
+    net = Unet3D(in_dim=2)
     return net
 
 def _optimizer(settings, net):
@@ -149,7 +149,8 @@ def train_epoch(net, optimizer, criterion, dataloader):
         segmentation = segmentation.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation, centerline)
+        # loss        = criterion(logits, segmentation, centerline)
+        loss        = criterion(logits, segmentation )
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -172,7 +173,8 @@ def validate_epoch(net, criterion, dataloader):
         segmentation = segmentation.cuda()
 
         logits      = net(volume)
-        loss        = criterion(logits, segmentation, centerline)
+        # loss        = criterion(logits, segmentation, centerline)
+        loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -338,7 +340,8 @@ def test(net, criterion, dataloader, dataset):
         segmentation = segmentation.cuda()
 
         logits       = net(volume)
-        loss        = criterion(logits, segmentation, centerline)
+        # loss        = criterion(logits, segmentation, centerline)
+        loss        = criterion(logits, segmentation )
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()

@@ -9,6 +9,6 @@
     "output_prediction_path":   "/media/16TB/HFD UCHL-1/HFD/output/patches/",
     "writer_path":              "/home/ramial-maskari/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "WBCE 0.2 Centerline Dice Unet3D Augmentation Global normalization",
-    "model_name":               "WBCE 0.2 Centerline Dice Unet3D Augmentation Global normalization"
+    "output_folder_prefix":     "2Channel WBCE Baseline Unet3D Augmentation Global normalization",
+    "model_name":               "2Channel WBCE Baseline Unet3D Augmentation Global normalization"
 }

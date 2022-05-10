@@ -66,13 +66,17 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
 
 class TrainingCenterlineDataset(Dataset):
-    #TODO Concat background and foreground
     def __init__(self, settings, split, transform=None, norm=None):
         self.settings = settings
 
         # Get paths
         nii_path    = settings["paths"]["input_raw_path"]
-        # bg_path     = settings["paths"]["input_bg_path"]
+        bg_path     = ""
+        if settings["paths"]["input_bg_path"]:
+            bg_path = settings["paths"]["input_bg_path"]
+            print("Loading data with background.")
+        else:
+            print("Loading data without background.")
         gt_path     = settings["paths"]["input_gt_path"]
         center_path = settings["paths"]["input_gt_center_path"]
 
@@ -89,12 +93,10 @@ class TrainingCenterlineDataset(Dataset):
         # Load data
         for item in split:
             item_nii_path       = os.path.join(nii_path, item)
-            # item_bg_path        = os.path.join(bg_path, item)
             item_center_path    = os.path.join(center_path, item)
             item_gt_path        = os.path.join(gt_path, item)
 
             image       = np.swapaxes(nib.load(item_nii_path).dataobj, 0, 1)
-            # image_bg    = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
             image_center= np.swapaxes(nib.load(item_center_path).dataobj, 0, 1).astype(np.int64)
             image_gt    = np.swapaxes(nib.load(item_gt_path).dataobj, 0, 1).astype(np.int64)
 
@@ -104,16 +106,21 @@ class TrainingCenterlineDataset(Dataset):
             image_gt[image_gt > 1] = 1
             image_center[image_center > 1] = 1
 
+            if bg_path:
+                item_bg_path= os.path.join(bg_path, item)
+                image_bg    = np.swapaxes(nib.load(item_bg_path).dataobj, 0, 1)
+                image_bg    = image_bg.astype(np.int64)
+
             if norm:
                 image       = norm(image)
-                # image_bg    = norm(image_bg)
+                if bg_path:
+                    image_bg    = norm(image_bg)
                 # image_gt    = norm(image_gt)
             
 
             if image.shape[0] > mb_size:
                 # Torchify
                 image           = torch.tensor(image).float()
-                # image_bg        = torch.tensor(image_bg).float()
                 image_center    = torch.tensor(image_center).float()
                 image_gt        = torch.tensor(image_gt).float()
 
@@ -124,7 +131,14 @@ class TrainingCenterlineDataset(Dataset):
                 offset_segmentation = (0,0,0)
 
                 image_list          = [x for x in get_patch_data3d(image, divs=vdivs, offset=offset_volume).unsqueeze(1)]
-                # image_bg_list       = [x for x in get_patch_data3d(image_bg, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                if bg_path:
+                    image_bg        = torch.tensor(image_bg).float()
+                    image_bg_list       = [x for x in get_patch_data3d(image_bg, divs=vdivs, offset=offset_volume).unsqueeze(1)]
+                    res_l = []
+                    for i, _ in enumerate(image_list):
+                        res_l.append(torch.cat((image_list[i], image_bg_list[i]),0))
+                    image_list = res_l
+
                 image_center_list   = [x for x in get_patch_data3d(image_center, divs=vdivs, offset=offset_segmentation).unsqueeze(1)]
                 image_gt_list       = [x for x in get_patch_data3d(image_gt, divs=vdivs,offset=offset_segmentation).unsqueeze(1)]
 
@@ -142,14 +156,16 @@ class TrainingCenterlineDataset(Dataset):
 
                 # Torchify
                 image           = torch.tensor(image).float()
-                # image_bg        = torch.tensor(image_bg).float()
                 image_center    = torch.tensor(image_center).float()
                 image_gt        = torch.tensor(image_gt).float()
 
-                nii_list.append(image.unsqueeze(0))
-                # bg_list.append(image_bg.unsqueeze(0))
+                if bg_path:
+                    image_bg        = torch.tensor(image_bg).float()
+                    image           = torch.cat((image, image_bg.unsqueeze(0)),0)
+
                 center_list.append(image_center.unsqueeze(0))
                 gt_list.append(image_gt.unsqueeze(0))
+                nii_list.append(image.unsqueeze(0))
 
                 name_list.append(item)
 
