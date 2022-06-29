@@ -1,13 +1,13 @@
 {
-    "input_raw_path":           "/media/10TB/Projects/cFos/segmentation/input/raw artifact removal_new/",
-    "input_gt_path":            "/media/10TB/Projects/cFos/segmentation/input/gt_new no empty patches/",
+    "input_raw_path":           "/media/10TB/Projects/MOVI/segmentation/input/raw/",
+    "input_gt_path":            "/media/10TB/Projects/MOVI/segmentation/input/gt/",
     "input_bg_path":            "",
     "input_weigth_path":        "",
-    "input_model_path":         "/media/10TB/Projects/cFos/segmentation/input/models/",
-    "output_model_path":        "/media/10TB/Projects/cFos/segmentation/output/models/",
-    "output_prediction_path":   "/media/10TB/Projects/cFos/segmentation/output/patches/",
+    "input_model_path":         "/media/10TB/Projects/MOVI/segmentation/input/models/",
+    "output_model_path":        "/media/10TB/Projects/MOVI/segmentation/output/models/",
+    "output_prediction_path":   "/media/10TB/Projects/MOVI/segmentation/output/patches/",
     "writer_path":              "/home/rami/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal",
-    "model_name":               "cFos MonaiTest small non empty Patches Fixed test set Artifact Removal"
+    "output_folder_prefix":     "MOVI 2D-Segmentation test",
+    "model_name":               "MOVI 2D-Segmentation test"
 }

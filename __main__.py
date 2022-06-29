@@ -10,9 +10,6 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
-from models.unet_3d_oliver import Unet3D
-from models.unet_2d import Unet2D
-from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
 from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
@@ -22,6 +19,7 @@ from loaders import *
 from util import *
 from blobanalysis import get_patch_overlap
 from classify_patches import classify_patch
+from monai.networks.nets import unet
 
 
 def _criterion(settings):
@@ -45,8 +43,6 @@ def save_model(net, model_save_path):
 def _net(settings):
     net_class   = settings["network"]
     num_channels= int(settings["dataloader"]["num_channels"])
-    net         = globals()[net_class](in_dim=num_channels)
-    from monai.networks.nets import unet
     net = unet(
             spatial_dims=2,
             in_channels=num_channels,
@@ -55,9 +51,6 @@ def _net(settings):
             strides=(2,2),
             num_res_units=4
     )
-    from monai.networks.nets.segresnet import SegResNet
-    net = SegResNet(
-            spatial_dims=2)
     return net
 
 def _optimizer(settings, net):
@@ -247,8 +240,6 @@ def save_epoch(settings, net, epoch, model_name, test_fold, val_fold, last_model
     save_model(net, model_save_path)
     write_meta_dict(model_save_dir, settings, "train")
     return model_save_dir
-
-
 
 def test_crossvalidation(settings, df, model_name, model_save_dir):
     """Calculate the best epoch for each test fold and compute the score of the best model
