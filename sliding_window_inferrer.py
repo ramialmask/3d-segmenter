@@ -34,6 +34,7 @@ def sliding_window_inference(
     cval: float = 0.0,
     sw_device: Union[torch.device, str, None] = None,
     device: Union[torch.device, str, None] = None,
+    SIGMOID : bool = False,
     *args: Any,
     **kwargs: Any,
 ) -> torch.Tensor:
@@ -151,6 +152,9 @@ def sliding_window_inference(
         window_data.to(sw_device)
 
         seg_prob = predictor(window_data, *args, **kwargs).to(device)  # batched patch segmentation
+        if SIGMOID:
+            seg_prob = torch.sigmoid(seg_prob)
+
         seg_prob = seg_prob.to(torch.half)
         
         if not _initialized:  # init. buffer at the first iteration
