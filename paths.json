@@ -1,14 +1,14 @@
 {
-    "input_raw_path":           "/media/rami/18TB/Alpha BTX/Large patches/C01/",
+    "input_raw_path":           "/media/rami/18TB/LNP/Organs by Izabela/Niftis/C01/",
     "input_gt_path":            "/media/rami/18TB/Alpha BTX/Large patches/",
     "input_gt_center_path":     "/media/rami/18TB/Alpha BTX/Large patches/",
     "input_bg_path":            "/media/rami/18TB/Alpha BTX/Large patches/C00/",
     "input_weigth_path":        "",
-    "input_model_path":         "/media/10TB/Projects/alpha-btx/segmentation/input/models/",
+    "input_model_path":         "/media/10TB/Projects/Biontech/segmentation/input/models/",
     "output_model_path":        "/media/10TB/Projects/alpha-btx/segmentation/output/models/",
-    "output_prediction_path":   "/media/rami/18TB/Alpha BTX/Prediction/",
+    "output_prediction_path":   "/media/rami/18TB/LNP/Organs by Izabela/Prediction/",
     "writer_path":              "/home/rami/runs/",
-    "input_model":              "model_1000.dat",
+    "input_model":              "_0_0_499.dat",
     "output_folder_prefix":     "Alpha-BTX Retraining",
     "model_name":               ""
 }
