@@ -23,7 +23,7 @@
         "padding_type":"circular"
     },
     "dataloader":{
-        "num_channels":"1",
+        "num_channels":"2",
         "batch_size":"16",
         "shuffle":"True",
         "num_workers":"0",

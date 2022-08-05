@@ -1,6 +1,6 @@
 {
     "retraining":"False",
-    "epochs":"1",
+    "epochs":"1000",
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{

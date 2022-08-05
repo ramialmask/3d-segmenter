@@ -324,7 +324,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                             "Test Recall":   [recall],\
                             "Test Dice":     [f1_dice],\
                             })
-        test_df = test_df.append(test_item)
+        test_df = pd.concat([test_df,test_item])
 
         # Make patch folder to keep all patches in a single directory
         if not os.path.exists(f"{model_save_dir}/patches/"):
@@ -365,7 +365,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                                 "FN":         [fn],\
                                 "F1 Score":         [dice],\
                                 })
-            test_overlap_df = test_overlap_df.append(test_overlap_item)
+            test_overlap_df = pd.concat([test_overlap_df,test_overlap_item])
 
     test_df.loc['mean'] = test_df.mean()
     test_overlap_df.loc['mean'] = test_overlap_df.mean()
@@ -449,7 +449,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
                             "Validation Dice":[metrics[-1]],\
                             })
     df_item.set_index(["Test Fold","Validation Fold","Epoch"])
-    df = df.append(df_item)
+    df = pd.concat([df,df_item])
     
     # Write the progress to the tensorboard
     writer.add_scalar(f"Loss/Training", train_loss, epoch)

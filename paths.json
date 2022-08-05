@@ -8,7 +8,7 @@
     "output_model_path":        "/home/ramial-maskari/Documents/UCHL-1 HFD Neuron segmentation/output/models/",
     "output_prediction_path":   "/",
     "writer_path":              "/home/ramial-maskari/runs/",
-    "input_model":              "_0_1_999.dat",
+    "input_model":              "",
     "output_folder_prefix":     "Centerline Training",
     "model_name":               ""
 }
