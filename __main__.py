@@ -6,17 +6,15 @@ import numpy as np
 import pandas as pd
 
 import torch.optim as optim
-from ranger import Ranger
+# from ranger import Ranger
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
-from models.unet_3d_oliver import Unet3D
-from models.unet_2d import Unet2D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
-# from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
+from loss.cl_dice_loss import CenterlineDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loss.mixed_dice_loss import MixedDiceLoss
 from loaders import *
@@ -30,6 +28,9 @@ def _criterion(settings):
     if criterion_class == "WeightedBinaryCrossEntropyLoss":
         class_frequency = settings["training"]["loss"]["class_frequency"] == "True"
         criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
+    elif criterion_class == "WBCECenterlineLoss":
+        weight_CL = settings["training"]["loss"]["weight_CL"]
+        criterion = WBCECenterlineLoss(weight_CL=weight_CL)
     else:
         criterion = globals()[criterion_class]()
     return criterion
@@ -47,7 +48,7 @@ def _net(settings):
     # net         = globals()[net_class](in_dim=num_channels)
 
     if net_class == "Unet3D":
-        from monai.networks.nets import unet
+        from monai.networks.nets.unet import UNet as unet
         net = unet(
                 spatial_dims=3,
                 in_channels=num_channels,
@@ -183,17 +184,17 @@ def train_epoch(net, optimizer, criterion, dataloader, epoch):
 
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        # skel         = item["centerline"]
+        skel         = item["centerline"]
         # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        # skel         = skel.cuda()
+        skel         = skel.cuda()
         # weights      = weights.cuda()
 
         logits      = net(volume)
         logits      = torch.sigmoid(logits)
-        loss        = criterion(logits, segmentation)
-        # loss        = criterion(logits, segmentation, skel)
+        # loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, target_skeleton=skel)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -209,18 +210,18 @@ def validate_epoch(net, criterion, dataloader, epoch):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        # skel         = item["centerline"]
+        skel         = item["centerline"]
         # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        # skel         = skel.cuda()
+        skel         = skel.cuda()
         # weights      = weights.cuda()
 
         logits      = net(volume)
         logits      = torch.sigmoid(logits)
         # loss        = criterion(logits, segmentation, weights=weights)
-        # loss        = criterion(logits, segmentation, skel)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, target_skeleton=skel)
+        # loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -372,65 +373,6 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
 
-#def test(net, criterion, dataloader, dataset):
-#    """Tests a given network on provided test data
-#    """
-#    net.eval()
-#    running_loss = 0.0
-#    d_len = len(dataloader)
-    
-#    # Saving the TP, TN, FP, FN for all items to calculate stats
-#    result_list = [0, 0, 0, 0]
-
-#    item_dict = {}
-#    reconstructed_patches = []
-
-#    for item in dataloader:
-#        volume       = item["volume"]
-#        segmentation = item["segmentation"]
-#        # weights      = item["weights"]
-#        volume       = volume.cuda()
-#        segmentation = segmentation.cuda()
-#        # weights      = weights.cuda()
-
-#        logits       = net(volume)
-#        logits       = torch.sigmoid(logits)
-#        # loss        = criterion(logits, segmentation, weights)
-#        loss        = criterion(logits, segmentation)
-#        running_loss += loss.item()
-
-#        res             = logits.detach().cpu().numpy()
-#        res[res > 0.5] = 1.0 
-#        res[res <= 0.5] = 0.0
-
-#        item_name = item["name"][0]
-#        item_z = int(item_name.split("$")[0])
-#        item_image = item_name.split("$")[1]
-        
-
-#        if item_image in item_dict.keys():
-#            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
-#        else:
-#            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
-
-#        res             = np.ravel(res)
-#        target          = np.ravel(segmentation.cpu().numpy())
-#        stats_          = calc_statistics(res, target)
-
-#        result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-        
-#    #TODO For smaller patches -> new reconstructed patches solution!!!
-#    orig_shape, orig_type, mb_size = dataset.original_information()
-
-
-#    if orig_shape[0] > mb_size:
-#        intermediate_patches    = reconstruct_patches_2d(item_dict, dataset)
-#        reconstructed_patches   = dict_to_patches(intermediate_patches, orig_shape)
-#    else:
-#        reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
-    
-#    precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
-#    return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
@@ -453,13 +395,16 @@ def test(net, criterion, dataloader, dataset):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        skel         = item["centerline"]
 
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
+        skel         = skel.cuda()
 
         logits       = net(volume)
         #TODO
-        # loss         = criterion(logits, segmentation)
+        # loss         = criterion(logits, segmentation, target_skeleton=skel)
+        loss        = 1
         running_loss += -1#loss.item()
 
         res             = logits.detach().cpu().numpy()

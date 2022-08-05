@@ -161,8 +161,8 @@ def get_loader(settings, input_list, train=True, testing=False):
     #TODO
     # dataset     = TrainingDataset2D(settings, input_list, norm=norm_func)
     print(f"BATCHSIZE {batch_size}")
-    dataset     = TrainingDataset(settings, input_list, transform=not(testing), norm=norm_func, train=train)
-    # dataset     = TrainingCenterlineDataset(settings, input_list, transform=not(testing), norm=norm_func)
+    # dataset     = TrainingDataset(settings, input_list, transform=not(testing), norm=norm_func, train=train)
+    dataset     = TrainingCenterlineDataset(settings, input_list, transform=not(testing), norm=norm_func)
     # dataset     = NumpyDataset(settings, input_list, transform=not(testing), norm=norm_func)
     loader      = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return loader, dataset
