@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 import torch.optim as optim
-# from ranger import Ranger
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
@@ -16,13 +15,11 @@ from models.unet_2d import Unet2D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
-# from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loss.mixed_dice_loss import MixedDiceLoss
 from loaders import *
 from util import *
 from blobanalysis import get_patch_overlap
-# from classify_patches import classify_patch
 from monai.losses.dice import DiceLoss
 
 def _criterion(settings):
@@ -31,6 +28,7 @@ def _criterion(settings):
         class_frequency = settings["training"]["loss"]["class_frequency"] == "True"
         criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
     else:
+        #TODO fix hacky BS
         criterion = globals()[criterion_class](split=0.5)
     return criterion
 
@@ -44,7 +42,6 @@ def save_model(net, model_save_path):
 def _net(settings):
     net_class   = settings["network"]
     num_channels= int(settings["dataloader"]["num_channels"])
-    # net         = globals()[net_class](in_dim=num_channels)
 
     if net_class == "UNet":
         from monai.networks.nets import UNet
@@ -75,7 +72,7 @@ def _net(settings):
         print(f"Network class {net_class} not found, exiting...")
         exit()
 
-
+    # Make sure we save the correct network:
     settings["network"] = net.__class__.__name__
 
     if settings["paths"]["input_model"] != "":
@@ -85,8 +82,16 @@ def _net(settings):
 
 def _optimizer(settings, net):
     learning_rate   = float(settings["training"]["optimizer"]["learning_rate"])
-    optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
-    # optimizer       = Ranger(net.parameters(), lr=learning_rate)
+    optimizer_class = settings["training"]["optimizer"]["class"]
+    if optimizer_class == "Adam":
+        optimizer       = optim.Adam(net.parameters(), lr=learning_rate)
+    elif optimizer_class == "Ranger":
+        from ranger import Ranger
+        optimizer       = Ranger(net.parameters(), lr=learning_rate)
+    else:
+        print(f"Optimizer class {optimizer_class} not found, exiting...")
+        exit()
+    settings["training"]["optimizer"]["class"] = optimizer.__class__.__name__
     return optimizer
 
 def _scheduler(settings, optimizer):
