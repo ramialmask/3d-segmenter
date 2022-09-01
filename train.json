@@ -12,11 +12,35 @@
         "test_folds":"1",
         "train_val_folds":"2",
         "test_split_rate":"0.2",
-        "train_val_split_rate":"0.2"
+        "train_val_split_rate":"0.2",
+        "test_set": [
+           "patchvolume_76_6.nii.gz",
+           "patchvolume_76_0.nii.gz",
+           "patchvolume_96_1.nii.gz",
+           "patchvolume_14_2.nii.gz",
+           "patchvolume_68_3.nii.gz",
+           "patchvolume_457_liver_1.nii.gz",
+           "patchvolume_53_3.nii.gz",
+           "patchvolume_93_5.nii.gz",
+           "patchvolume_33_7.nii.gz",
+           "patchvolume_76_1.nii.gz",
+           "patchvolume_48_2.nii.gz",
+           "patchvolume_67_4.nii.gz",
+           "patchvolume_96_6.nii.gz",
+           "patchvolume_457_liver_0.nii.gz",
+           "patchvolume_67_0.nii.gz",
+           "patchvolume_457_liver_2.nii.gz",
+           "patchvolume_67_3.nii.gz",
+           "patchvolume_81_spleen_2.nii.gz",
+           "patchvolume_53_2.nii.gz",
+           "patchvolume_81_spleen_1.nii.gz",
+           "patchvolume_515_liver_4.nii.gz",
+           "patchvolume_81_spleen_5.nii.gz"
+        ]
     },
     "optimizer":{
         "class":"Adam",
-        "learning_rate":"1e-3",
+        "learning_rate":"1e-2",
         "decay":"Default",
         "momentum":"Default"
     },

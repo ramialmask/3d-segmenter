@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 import torch.optim as optim
-from ranger import Ranger
+# from ranger import Ranger
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
@@ -22,7 +22,7 @@ from loss.mixed_dice_loss import MixedDiceLoss
 from loaders import *
 from util import *
 from blobanalysis import get_patch_overlap
-from classify_patches import classify_patch
+# from classify_patches import classify_patch
 from monai.losses.dice import DiceLoss
 
 def _criterion(settings):
@@ -31,7 +31,7 @@ def _criterion(settings):
         class_frequency = settings["training"]["loss"]["class_frequency"] == "True"
         criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
     else:
-        criterion = globals()[criterion_class]()
+        criterion = globals()[criterion_class](split=0.5)
     return criterion
 
 def load_model(net, path):
@@ -46,9 +46,9 @@ def _net(settings):
     num_channels= int(settings["dataloader"]["num_channels"])
     # net         = globals()[net_class](in_dim=num_channels)
 
-    if net_class == "Unet3D":
-        from monai.networks.nets import unet
-        net = unet(
+    if net_class == "UNet":
+        from monai.networks.nets import UNet
+        net = UNet(
                 spatial_dims=3,
                 in_channels=num_channels,
                 out_channels=1,
@@ -57,11 +57,26 @@ def _net(settings):
                 num_res_units=4,
                 act="mish"
         )
+    elif net_class == "DynUNet":
+        from monai.networks.nets import DynUNet
+        net = DynUNet(
+                spatial_dims=3,
+                in_channels=num_channels,
+                out_channels=1,
+                kernel_size=(3,3,3),
+                strides=(2,2,2),
+                res_block=True
+        )
     elif net_class == "SegResNet":
         from monai.networks.nets.segresnet import SegResNet
         net = SegResNet(
                 spatial_dims=3)
-    #TODO elifs
+    else:
+        print(f"Network class {net_class} not found, exiting...")
+        exit()
+
+
+    settings["network"] = net.__class__.__name__
 
     if settings["paths"]["input_model"] != "":
         print(f'Retraining Network, loading {settings["paths"]["input_model"]}...')
@@ -183,6 +198,20 @@ def train_epoch(net, optimizer, criterion, dataloader, epoch):
 
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        # print(volume.shape)
+        # print(segmentation.shape)
+        # print(torch.min(segmentation), torch.median(segmentation), torch.max(segmentation))
+        # from matplotlib import pyplot as plt
+        # fig, ax = plt.subplots(2,1)
+        # c_i = 0
+        # while(True):
+        #     if torch.max(segmentation[0,0,:,:,c_i]) > 0:
+        #         ax[0].imshow(volume[0,0,:,:,50])
+        #         ax[1].imshow(segmentation[0,0,:,:,50])
+        #         plt.show()
+        #         break
+        #     else:
+        #         c_i += 1
         # skel         = item["centerline"]
         # weights      = item["weights"]
         volume       = volume.cuda()
@@ -323,7 +352,7 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                             "Test Recall":   [recall],\
                             "Test Dice":     [f1_dice],\
                             })
-        test_df = test_df.append(test_item)
+        test_df = pd.concat([test_df,test_item])
 
         # Make patch folder to keep all patches in a single directory
         if not os.path.exists(f"{model_save_dir}/patches/"):
@@ -354,83 +383,24 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             
             dice = tp / (0.00001 + tp + 0.5*(fp + fn))
             if tp == 0 and fp == 0 and fn == 0:
-                dice = 1
-
-            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                "Validation Fold":[best_val_fold],\
-                                "Patch":          [item_name],\
-                                "TP":           [tp],\
-                                "FP":         [fp],\
-                                "FN":         [fn],\
-                                "F1 Score":         [dice],\
-                                })
-            test_overlap_df = test_overlap_df.append(test_overlap_item)
+                # dice = 1
+                pass
+            else:
+                test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                    "Validation Fold":[best_val_fold],\
+                                    "Patch":          [item_name],\
+                                    "TP":           [tp],\
+                                    "FP":         [fp],\
+                                    "FN":         [fn],\
+                                    "F1 Score":         [dice],\
+                                    })
+                test_overlap_df = pd.concat([test_overlap_df, test_overlap_item])
 
     test_df.loc['mean'] = test_df.mean()
     test_overlap_df.loc['mean'] = test_overlap_df.mean()
     print(f"\nOverlap Test:\n{test_overlap_df}")
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
-
-#def test(net, criterion, dataloader, dataset):
-#    """Tests a given network on provided test data
-#    """
-#    net.eval()
-#    running_loss = 0.0
-#    d_len = len(dataloader)
-    
-#    # Saving the TP, TN, FP, FN for all items to calculate stats
-#    result_list = [0, 0, 0, 0]
-
-#    item_dict = {}
-#    reconstructed_patches = []
-
-#    for item in dataloader:
-#        volume       = item["volume"]
-#        segmentation = item["segmentation"]
-#        # weights      = item["weights"]
-#        volume       = volume.cuda()
-#        segmentation = segmentation.cuda()
-#        # weights      = weights.cuda()
-
-#        logits       = net(volume)
-#        logits       = torch.sigmoid(logits)
-#        # loss        = criterion(logits, segmentation, weights)
-#        loss        = criterion(logits, segmentation)
-#        running_loss += loss.item()
-
-#        res             = logits.detach().cpu().numpy()
-#        res[res > 0.5] = 1.0 
-#        res[res <= 0.5] = 0.0
-
-#        item_name = item["name"][0]
-#        item_z = int(item_name.split("$")[0])
-#        item_image = item_name.split("$")[1]
-        
-
-#        if item_image in item_dict.keys():
-#            item_dict[item_image].append((item_z, res.squeeze().squeeze()))
-#        else:
-#            item_dict[item_image] = [(item_z, res.squeeze().squeeze())]
-
-#        res             = np.ravel(res)
-#        target          = np.ravel(segmentation.cpu().numpy())
-#        stats_          = calc_statistics(res, target)
-
-#        result_list = [result_list[i] + stats_[i] for i in range(len(stats_))]
-        
-#    #TODO For smaller patches -> new reconstructed patches solution!!!
-#    orig_shape, orig_type, mb_size = dataset.original_information()
-
-
-#    if orig_shape[0] > mb_size:
-#        intermediate_patches    = reconstruct_patches_2d(item_dict, dataset)
-#        reconstructed_patches   = dict_to_patches(intermediate_patches, orig_shape)
-#    else:
-#        reconstructed_patches   = reconstruct_patches_2d(item_dict, dataset)
-    
-#    precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
-#    return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
 def test(net, criterion, dataloader, dataset):
     """Tests a given network on provided test data
@@ -504,7 +474,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
                             "Validation Dice":[metrics[-1]],\
                             })
     df_item.set_index(["Test Fold","Validation Fold","Epoch"])
-    df = df.append(df_item)
+    df = pd.concat([df,df_item])
     
     # Write the progress to the tensorboard
     writer.add_scalar(f"Loss/Training", train_loss, epoch)

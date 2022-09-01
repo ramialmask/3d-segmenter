@@ -65,6 +65,8 @@ def calc_metrices_stats(m_list):
     return precision, recall, vs, accuracy, f1_dice
 
 def create_overlay(pred, target):
+    pred    = np.squeeze(pred)
+    target  = np.squeeze(target)
     target[target > 1] = 1 
     pred[pred > 1] = 1 
 
