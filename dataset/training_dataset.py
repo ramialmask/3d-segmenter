@@ -68,7 +68,6 @@ def get_patch_data3d(volume3d, divs=(3,3,6), offset=(6,6,6), seg=False):
     return torch.tensor(np.array(patches, dtype = volume3d.dtype))
 
 class TrainingDataset(Dataset):
-    #TODO Background!
     def __init__(self, settings, split, transform=None, norm=None, train=False):
         self.settings = settings
 
@@ -122,7 +121,6 @@ class TrainingDataset(Dataset):
 
             if norm:
                 image       = norm(image)
-                # image_gt    = norm(image_gt)
                 if bg_channel:
                     image_bg = norm(image_bg)
             
@@ -130,7 +128,6 @@ class TrainingDataset(Dataset):
             if image.shape[0] > mb_size:
                 # Torchify
                 #TODO torchify downstairs
-                # image = torch.tensor(image).float()
                 if train:
                     image_gt = torch.tensor(image_gt).float()
 
@@ -220,15 +217,6 @@ class TrainingDataset(Dataset):
             if self.transform_p:
                 volume, segmentation = self.transform(volume, segmentation)
 
-            # from matplotlib import pyplot as plt
-            # plt.figure()
-            # fig, axes = plt.subplots(ncols = 2)
-            # vol          = volume.numpy()
-            # seg    = segmentation.numpy()
-            # axes[0].imshow(np.max(vol[0,:,:,:], axis=2))
-            # axes[1].imshow(np.max(seg[0,:,:,:], axis=2))
-            # plt.show()
-            # exit()
             return {"volume":volume, "segmentation":segmentation, "name":name}
         else:
             name = self.item_list[1][idx]

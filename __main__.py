@@ -44,12 +44,14 @@ def _net(settings):
     num_channels= int(settings["dataloader"]["num_channels"])
 
     if net_class == "UNet":
+        #TODO Groessere Channel 32 63 128
         from monai.networks.nets import UNet
         net = UNet(
                 spatial_dims=3,
                 in_channels=num_channels,
                 out_channels=1,
-                channels=(4,8,16),
+                # channels=(16,32,64),
+                channels=(32,64,128),
                 strides=(2,2,2),
                 num_res_units=4,
                 act="mish"
@@ -402,7 +404,11 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
                 test_overlap_df = pd.concat([test_overlap_df, test_overlap_item])
 
     test_df.loc['mean'] = test_df.mean()
-    test_overlap_df.loc['mean'] = test_overlap_df.mean()
+    tp = test_overlap_df['TP'].sum()
+    fp = test_overlap_df['FP'].sum()
+    fn = test_overlap_df['FN'].sum()
+    dice = tp / (0.00001 + tp + 0.5*(fp + fn))
+    test_overlap_df.loc['mean'] = dice
     print(f"\nOverlap Test:\n{test_overlap_df}")
     test_df.to_csv(f"{model_save_dir}/test_scores.csv")
     test_overlap_df.to_csv(f"{model_path}/test_overlap.csv")
