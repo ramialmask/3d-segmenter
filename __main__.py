@@ -6,15 +6,15 @@ import numpy as np
 import pandas as pd
 
 import torch.optim as optim
+from ranger import Ranger
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from PIL import Image
 
-from models.unet_3d_oliver import Unet3D
-from models.unet_2d import Unet2D
 from models.deep_vessel_3d import Deep_Vessel_Net_FC
 from statistics import calc_statistics, calc_metrices_stats, create_overlay
 from loss.dice_loss import DiceLoss
+# from loss.cl_dice_loss import CenterlineDiceLoss, MixedDiceLoss, WBCECenterlineLoss
 from loss.weighted_binary_cross_entropy_loss import WeightedBinaryCrossEntropyLoss
 from loss.mixed_dice_loss import MixedDiceLoss
 from loaders import *
@@ -27,6 +27,9 @@ def _criterion(settings):
     if criterion_class == "WeightedBinaryCrossEntropyLoss":
         class_frequency = settings["training"]["loss"]["class_frequency"] == "True"
         criterion =WeightedBinaryCrossEntropyLoss(class_frequency=class_frequency)
+    elif criterion_class == "WBCECenterlineLoss":
+        weight_CL = settings["training"]["loss"]["weight_CL"]
+        criterion = WBCECenterlineLoss(weight_CL=weight_CL)
     else:
         #TODO fix hacky BS
         criterion = globals()[criterion_class](split=0.5)
@@ -206,31 +209,17 @@ def train_epoch(net, optimizer, criterion, dataloader, epoch):
 
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        # print(volume.shape)
-        # print(segmentation.shape)
-        # print(torch.min(segmentation), torch.median(segmentation), torch.max(segmentation))
-        # from matplotlib import pyplot as plt
-        # fig, ax = plt.subplots(2,1)
-        # c_i = 0
-        # while(True):
-        #     if torch.max(segmentation[0,0,:,:,c_i]) > 0:
-        #         ax[0].imshow(volume[0,0,:,:,50])
-        #         ax[1].imshow(segmentation[0,0,:,:,50])
-        #         plt.show()
-        #         break
-        #     else:
-        #         c_i += 1
-        # skel         = item["centerline"]
+        skel         = item["centerline"]
         # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        # skel         = skel.cuda()
+        skel         = skel.cuda()
         # weights      = weights.cuda()
 
         logits      = net(volume)
         logits      = torch.sigmoid(logits)
-        loss        = criterion(logits, segmentation)
-        # loss        = criterion(logits, segmentation, skel)
+        # loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, target_skeleton=skel)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -246,18 +235,18 @@ def validate_epoch(net, criterion, dataloader, epoch):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
-        # skel         = item["centerline"]
+        skel         = item["centerline"]
         # weights      = item["weights"]
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
-        # skel         = skel.cuda()
+        skel         = skel.cuda()
         # weights      = weights.cuda()
 
         logits      = net(volume)
         logits      = torch.sigmoid(logits)
         # loss        = criterion(logits, segmentation, weights=weights)
-        # loss        = criterion(logits, segmentation, skel)
-        loss        = criterion(logits, segmentation)
+        loss        = criterion(logits, segmentation, target_skeleton=skel)
+        # loss        = criterion(logits, segmentation)
         running_loss += loss.item()
 
         res             = logits.detach().cpu().numpy()
@@ -391,18 +380,17 @@ def test_crossvalidation(settings, df, model_name, model_save_dir):
             
             dice = tp / (0.00001 + tp + 0.5*(fp + fn))
             if tp == 0 and fp == 0 and fn == 0:
-                # dice = 1
-                pass
-            else:
-                test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
-                                    "Validation Fold":[best_val_fold],\
-                                    "Patch":          [item_name],\
-                                    "TP":           [tp],\
-                                    "FP":         [fp],\
-                                    "FN":         [fn],\
-                                    "F1 Score":         [dice],\
-                                    })
-                test_overlap_df = pd.concat([test_overlap_df, test_overlap_item])
+                dice = 1
+
+            test_overlap_item = pd.DataFrame({"Test Fold":[test_fold],\
+                                "Validation Fold":[best_val_fold],\
+                                "Patch":          [item_name],\
+                                "TP":           [tp],\
+                                "FP":         [fp],\
+                                "FN":         [fn],\
+                                "F1 Score":         [dice],\
+                                })
+            test_overlap_df = test_overlap_df.append(test_overlap_item)
 
     test_df.loc['mean'] = test_df.mean()
     tp = test_overlap_df['TP'].sum()
@@ -435,13 +423,16 @@ def test(net, criterion, dataloader, dataset):
     for item in dataloader:
         volume       = item["volume"]
         segmentation = item["segmentation"]
+        skel         = item["centerline"]
 
         volume       = volume.cuda()
         segmentation = segmentation.cuda()
+        skel         = skel.cuda()
 
         logits       = net(volume)
         #TODO
-        # loss         = criterion(logits, segmentation)
+        # loss         = criterion(logits, segmentation, target_skeleton=skel)
+        loss        = 1
         running_loss += -1#loss.item()
 
         res             = logits.detach().cpu().numpy()

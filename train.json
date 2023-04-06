@@ -4,7 +4,8 @@
     "early_stopping":"False",
     "delete_qs":"True",
     "loss":{
-        "class":"MixedDiceLoss",
+        "class":"WBCECenterlineLoss",
+        "weight_CL":0.2,
         "class_frequency":"True",
         "reduction":"sum"
     },
