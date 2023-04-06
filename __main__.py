@@ -189,7 +189,8 @@ def train(settings, train_val_list, test_fold, train_val_fold, model_name, df):
         # scheduler.step(validation_loss)
 
         metrics = [accuracy, precision, recall, f1_dice]
-        df = _write_progress(writer, test_fold, train_val_fold, epoch, epochs, running_loss, validation_loss, metrics, df)
+        _lr     = optimizer.state_dict()["param_groups"][0]["lr"]
+        df = _write_progress(writer, test_fold, train_val_fold, epoch, epochs, running_loss, validation_loss, metrics, _lr, df)
     
         last_model_dir = save_epoch(settings, net, epoch, model_name, test_fold, train_val_fold, last_model_dir)
     return df
@@ -466,7 +467,7 @@ def test(net, criterion, dataloader, dataset):
     precision, recall, vs, accuracy, f1_dice = calc_metrices_stats(result_list)
     return running_loss / d_len, accuracy, precision, recall, f1_dice, reconstructed_patches
 
-def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval_loss, metrics, df):
+def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval_loss, metrics, learning_rate, df):
     """Writes the progress of the training both on the default output as well as the connected tensorboard writer
     """
 
@@ -490,6 +491,7 @@ def _write_progress(writer, test_fold, val_fold, epoch, epochs, train_loss, eval
     # Write the progress to the tensorboard
     writer.add_scalar(f"Loss/Training", train_loss, epoch)
     writer.add_scalar(f"Loss/Validation", eval_loss, epoch)
+    writer.add_scalar(f"Hyperparameters/Learning Rate", learning_rate, epoch)
     writer.add_scalar(f"Validation Metrics/Accuracy", metrics[0], epoch)
     writer.add_scalar(f"Validation Metrics/Precision", metrics[1], epoch)
     writer.add_scalar(f"Validation Metrics/Recall", metrics[-2], epoch)

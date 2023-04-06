@@ -9,6 +9,6 @@
     "output_prediction_path":   "/media/10TB/Projects/LNP_Biontech/segmentation/output/patches/",
     "writer_path":              "/home/rami/runs/",
     "input_model":              "",
-    "output_folder_prefix":     "LNP RETRAINING",
+    "output_folder_prefix":     "LNP Bigger U-Net",
     "model_name":               ""
 }
